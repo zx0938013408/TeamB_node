@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-hant-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <link
+      rel="stylesheet"
+      href="http://localhost:3001/bootstrap/css/bootstrap.min.css"
+    />
+  </head>
+  <body>
+    <div class="container"></div>
+
+    <script>
+      const container = document.querySelector(".container");
+
+      const renderPage = (data) => {
+        return `
+        <div class="row">
+          <div class="col">
+            <nav aria-label="Page navigation example">
+
+              <ul class="pagination">
+                ${Array(11)
+                  .fill(1)
+                  .map((v, i) => {
+                    const p = data.page + i - 5;
+                    // 頁碼如果超出範圍, 就給空字串
+                    if (p < 1 || p > data.totalPages) return "";
+                    return `
+                      <li class="page-item ${data.page == p ? "active" : ""}">
+                        <a class="page-link" href="?page=${p}">${p}</a>
+                      </li>
+                    `;
+                  })
+                  .join("")}
+
+              </ul>
+            </nav>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col">
+            <table class="table table-striped table-bordered">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>姓名</th>
+                  <th>電郵</th>
+                  <th>手機</th>
+                  <th>生日</th>
+                  <th>地址</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${data.rows
+                  .map((r) => {
+                    return `
+                    <tr>
+                      <td>${r.ab_id}</td>
+                      <td>${r.name}</td>
+                      <td>${r.email}</td>
+                      <td>${r.mobile}</td>
+                      <td>${r.birthday}</td>
+                      <td>${r.address}</td>
+                    </tr>
+                  `;
+                  })
+                  .join("")}
+
+              </tbody>
+            </table>
+          </div>
+        </div>
+        `;
+      };
+
+      fetch(`http://localhost:3001/address-book/api${location.search}`)
+        .then((r) => r.json())
+        .then((result) => {
+          console.log(result);
+          if (!result.success && result.redirect) {
+            location.href = result.redirect;
+          } else if (result.success) {
+            container.innerHTML = renderPage(result);
+          }
+        });
+    </script>
+  </body>
+</html>

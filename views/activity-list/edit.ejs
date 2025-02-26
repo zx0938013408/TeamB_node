@@ -1,0 +1,206 @@
+<%- include('../parts/html-head') %> <%- include('../parts/html-navbar') %>
+<style>
+  form .mb-3 .form-text {
+    display: none;
+    /* color: red; */
+  }
+
+  form .mb-3.error input.form-control {
+    border: 2px solid red;
+  }
+
+  form .mb-3.error .form-text {
+    display: block;
+    color: red;
+  }
+</style>
+<div class="container">
+  <div class="row">
+    <div class="col-6">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title">編輯通訊錄</h5>
+          <form onsubmit="sendData(event)">
+            <div class="mb-3">
+              <label for="name" class="form-label">編號</label>
+              <input type="text" class="form-control" value="<%= al_id %>" disabled/>
+            </div>
+
+            <div class="mb-3">
+              <label for="name" class="form-label">活動名稱</label>
+              <input type="text" class="form-control" id="name" name="name"  value="<%= activity_name %>"/>
+              <div class="form-text"></div>
+            </div>
+
+            <div class="mb-3">
+              <label for="" class="form-label">照片</label>
+              <br />
+              <button
+                type="button"
+                class="btn btn-warning"
+                onclick="event.target.closest('.mb-3').querySelector('input').click()"
+              >
+                選擇圖檔
+              </button>
+              <input
+                type="file"
+                name="avatar"
+                accept="image/jpeg,image/png"
+                onchange="previewImg(event)"
+                hidden
+              />
+              <div style="width: 20rem">
+                <% if(avatar){ %>
+                  <img id="preview" src="/imgs/<%= avatar %>" width="100%" />
+                <% } else { %>
+                  <img id="preview" src="/imgs/unnamed.png" width="100%" />
+                <% } %>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label for="sport_type_id" class="form-label">運動類型</label>
+              <select name="sport_type_id" id="sport_type_id" class="form-select" aria-label="Default select example">
+                <option selected value="">--請選擇--</option>
+                <% try { %>
+                  <% if (sportTypes && sportTypes.length > 0) { %>
+                    <% sportTypes.forEach(sport => { %>
+                      <option value="<%= sport.id %>"><%= sport.sport_name %></option>
+                    <% }) %>
+                  <% } else { %>
+                    <option value="">無可用選項</option>
+                  <% } %>
+                <% } catch (error) { %>
+                  <option value="">資料庫錯誤: <%= error.message %></option>
+                <% } %>
+              </select>
+            </div>
+            <button type="submit" class="btn btn-primary">修改</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div
+  class="modal fade"
+  id="exampleModal"
+  tabindex="-1"
+  aria-labelledby="exampleModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h1 class="modal-title fs-5" id="exampleModalLabel">編輯結果</h1>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-success" role="alert">資料編輯成功</div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          關閉
+        </button>
+        <a class="btn btn-primary" href="/activity_list">回到列表頁</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%- include('../parts/html-scripts') %>
+<script>
+  const locals = <%- JSON.stringify(locals) %>;
+  const originalData = <%- JSON.stringify(item) %>; // 原來項目內容資料
+  const nameField = document.querySelector("#name");
+  const emailField = document.querySelector("#email");
+  const myModal = new bootstrap.Modal("#exampleModal");
+
+  function validateEmail(email) {
+    // 使用 regular expression 檢查 email 格式正不正確
+    const pattern =
+      /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+    return pattern.test(email);
+  }
+
+  const sendData = (e) => {
+    e.preventDefault(); // 不要讓表單以傳統的方式送出
+
+    nameField.closest(".mb-3").classList.remove("error");
+    emailField.closest(".mb-3").classList.remove("error");
+
+    let isPass = true; // 有沒有通過檢查, 預設值是 true
+    // TODO: 資料欄位的檢查
+    /*
+    if (nameField.value.length < 2) {
+      isPass = false;
+      nameField.nextElementSibling.innerHTML = "請填寫正確的姓名";
+      nameField.closest(".mb-3").classList.add("error");
+    }
+
+    if (!validateEmail(emailField.value)) {
+      isPass = false;
+      emailField.nextElementSibling.innerHTML = "請填寫正確的 Email";
+      emailField.closest(".mb-3").classList.add("error");
+    }
+*/
+    if (isPass) {
+      const fd = new FormData(document.forms[0]);
+
+      fetch(`/address-book/api/${originalData.ab_id}`, {
+        method: "PUT",
+        body: fd,
+      })
+        .then((r) => r.json())
+        .then((obj) => {
+          console.log(obj);
+          /*
+          if (!obj.success && obj.error) {
+            alert(obj.error);
+          }
+          */
+          if (obj.success) {
+            myModal.show(); // 呈現 modal
+          } else {
+            obj.error?.issues?.forEach((item) => {
+              if (item.path[0] === "name") {
+                nameField.nextElementSibling.innerHTML = item.message;
+                nameField.closest(".mb-3").classList.add("error");
+              } else if (item.path[0] === "email") {
+                emailField.nextElementSibling.innerHTML = item.message;
+                emailField.closest(".mb-3").classList.add("error");
+              }
+            });
+          }
+        })
+        .catch(console.warn);
+    }
+  };
+
+  const preview = document.querySelector("#preview"); // img 標籤
+  const previewImg = (e) => {
+    const file = e.target.files[0];
+    console.log({file});
+    
+    if (file) {
+      const url = URL.createObjectURL(file);
+      preview.src = url;
+    } else {
+      // preview.src = "";
+      if(originalData.avatar){
+        preview.src = `/imgs/${originalData.avatar}`;
+      } else {
+        preview.src = `/imgs/unnamed.png`;
+      }
+    }
+  };
+</script>
+
+<%- include('../parts/html-tail') %>

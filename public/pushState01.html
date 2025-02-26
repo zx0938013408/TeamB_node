@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="zh-hant-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <button data-href="?name=shinder">?name=shinder</button>
+    <br />
+    <button data-href="/abc/def">/abc/def</button>
+    <br />
+    <button data-href="https://tw.yahoo.com">https://tw.yahoo.com</button>
+    <script>
+      document.addEventListener("click", (e) => {
+        const btn = e.target;
+        const href = btn.getAttribute("data-href");
+        console.log({ href });
+        // 變換網址列內容
+        history.pushState({ a: href }, null, href);
+      });
+
+      window.addEventListener("popstate", (e) => {
+        console.log(e.state);
+        
+      });
+    </script>
+  </body>
+</html>

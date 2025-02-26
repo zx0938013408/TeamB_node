@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="zh-hant-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <pre id="info"></pre>
+    <script>
+      fetch(`http://localhost:3001/try-sess`, {
+        credentials: "include",
+      })
+        .then((r) => r.json())
+        .then((obj) => {
+          info.innerHTML = JSON.stringify(obj, null, 4);
+        });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,118 @@
+<%- include('../parts/html-head') %> <%- include('../parts/html-navbar') %>
+<style>
+  b {
+    color: red;
+  }
+</style>
+<div class="container">
+  <div class="row">
+    <div class="col-8">
+      <nav aria-label="Page navigation example">
+        <ul class="pagination">
+          <% for(let i= page-5; i<= page+5; i++) if(i>=1 && i<=totalPages){
+          const qs = {...query}; qs.page = i; %>
+          <li class="page-item <%= i==page ? 'active' : '' %>">
+            <a class="page-link" href="?<%- new URLSearchParams(qs) %>"
+              ><%= i %></a
+            >
+          </li>
+          <% } %>
+        </ul>
+      </nav>
+    </div>
+    <div class="col-4">
+      <form class="d-flex" role="search">
+        <input
+          class="form-control me-2"
+          type="search"
+          placeholder="Search"
+          aria-label="Search"
+          name="keyword"
+          value="<%= keyword %>"
+        />
+        <button class="btn btn-outline-success" type="submit">Search</button>
+      </form>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-4">
+      <select class="form-select" onchange="doSort(event)">
+        <option value="al_id-desc">流水號降冪</option>
+        <option value="al_id-asc">流水號升冪</option>
+        <option value="activity_time-desc">生日降冪</option>
+        <option value="activity_time-asc">生日升冪</option>
+      </select>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col">
+      <table class="table table-striped table-bordered">
+        <thead>
+          <tr>
+            <th>編號</th>
+            <th>活動名稱</th>
+						<th>活動相片</th>
+            <th>運動類型</th>
+            <th>活動地址</th>
+            <th>地點名稱</th>
+            <th>活動時間</th>
+            <th>報名期限</th>
+            <th>活動費用</th>
+            <th>需求人數</th>
+            <th>活動簡介</th>
+            <th>開團者</th>
+            <th>創建時間</th>
+            <th>更新時間</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% for(let r of rows){ %>
+            <tr>
+              <td class="al_id"><%= r.al_id %></td>
+              <td><%= r.activity_name %></td>
+              <td><%= r.photo_url %></td>
+              <td><%= r.sport_name %></td>
+              <td><%= r.area_name %></td>
+              <td><%= r.address %></td>
+              <td><%= r.activity_time %></td>
+              <td><%= r.deadline %></td>
+              <td><%= r.payment %></td>
+              <td><%= r.need_num %></td>
+              <td><%= r.introduction %></td>
+              <td><%= r.name %></td>
+              <td><%= r.create_time %></td>
+              <td><%= r.update_time %></td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<%- include('../parts/html-scripts') %>
+<script>
+  const sortCombo = document.querySelector("select.form-select");
+
+  /* 設定排序規則的選項 */
+  const usp2 = new URLSearchParams(location.search);
+  const ar = ["al_id-desc", "al_id-asc", "activity_time-desc", "activity_time-asc"];
+  const str = usp2.get("sortField") + "-" + usp2.get("sortRule");
+  if (ar.includes(str)) {
+    sortCombo.value = str;
+  }
+
+  const doSort = (e) => {
+    console.log(e.target.value);
+
+    const usp = new URLSearchParams(location.search); // 保有原來的參數
+    usp.delete("page"); // 刪掉 page 參數
+    const sorData = e.target.value.split("-");
+    usp.set("sortField", sorData[0]);
+    usp.set("sortRule", sorData[1]);
+
+    location.href = `?${usp}`;
+  };
+
+</script>
+<%- include('../parts/html-tail') %>

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="zh-hant-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <script>
+      // URLSearchParams: 1. 用來解析 urlencoded 格式; 2. 轉換成 urlencoded 格式
+
+      const str = "?sn=280559&name=小明&a=1&a=2";
+
+      const usp1 = new URLSearchParams(str);
+      console.log(usp1.get("sn"));
+      console.log("-----------------");
+      console.log(usp1.get("name"));
+      console.log(usp1.getAll("name"));
+      console.log("-----------------");
+      console.log(usp1.get("a"));
+      console.log(usp1.getAll("a")); // 取得所有同名稱的參數
+      console.log("-----------------");
+      console.log(usp1);
+      console.log("-----------------");
+
+      const obj = { name: "小新", age: 20 };
+      const usp2 = new URLSearchParams(obj);
+      console.log(usp2.toString());
+    </script>
+  </body>
+</html>

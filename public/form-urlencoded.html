@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="zh-hant-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <form name="form1" onsubmit="sendData(event)">
+      <input type="text" name="account" value="my_account" /><br />
+      <input type="password" name="password" value="my_password" /><br />
+      <button>送出</button>
+    </form>
+    <script>
+      const sendData = async (e) => {
+        e.preventDefault(); // 讓表單不要以傳統的方式送出
+
+        const fd = new FormData(document.form1);
+        const usp = new URLSearchParams(fd);
+
+        const r = await fetch("/try-post", {
+          method: "POST",
+          body: usp.toString(),
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+        });
+        const result = await r.json();
+
+        console.log(result);
+      };
+    </script>
+  </body>
+</html>
