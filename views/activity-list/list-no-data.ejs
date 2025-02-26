@@ -1,0 +1,29 @@
+<%- include('../parts/html-head') %> <%- include('../parts/html-navbar') %>
+<style>
+  b {
+    color: red;
+  }
+</style>
+<div class="container">
+  <div class="row">
+    <div class="col-8">
+    </div>
+    <div class="col-4">
+      <form class="d-flex" role="search">
+        <input
+          class="form-control me-2"
+          type="search"
+          placeholder="Search"
+          aria-label="Search"
+          name="keyword"
+          value="<%= keyword %>"
+        />
+        <button class="btn btn-outline-success" type="submit">Search</button>
+      </form>
+    </div>
+  </div>
+  <br />
+  <div class="alert alert-warning" role="alert">沒有查詢到資料</div>
+</div>
+
+<%- include('../parts/html-scripts') %> <%- include('../parts/html-tail') %>

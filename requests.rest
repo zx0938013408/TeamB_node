@@ -1,0 +1,18 @@
+
+
+# 註解
+GET http://localhost:3001
+
+### 分隔線
+
+POST http://localhost:3001/try-post
+Content-Type: application/x-www-form-urlencoded
+
+name=小新&age=27
+
+### 分隔線
+
+POST http://localhost:3001/try-post
+Content-Type: application/json
+
+{"name": "Shinder"}

@@ -1,0 +1,73 @@
+<%- include('parts/html-head') %> <%- include('parts/html-navbar') %>
+
+<div class="container">
+  <div class="row">
+    <div class="col-6">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title">管理者登入</h5>
+          <form name="loginForm" onsubmit="sendData(event)">
+            <div class="mb-3">
+              <label for="email" class="form-label">電郵帳號</label>
+              <input
+                type="email"
+                class="form-control"
+                id="email"
+                name="email"
+              />
+              <div class="form-text"></div>
+            </div>
+
+            <div class="mb-3">
+              <label for="password" class="form-label">密碼</label>
+              <input
+                type="password"
+                class="form-control"
+                id="password"
+                name="password"
+              />
+            </div>
+
+            <button type="submit" class="btn btn-primary">登入</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%- include('parts/html-scripts') %>
+<script>
+  const sendData = (e) => {
+    e.preventDefault(); // 不要讓表單以傳統的方式送出
+    if (!document.loginForm.email.value || !document.loginForm.password.value) {
+      alert("兩個欄位都必須填寫");
+      return;
+    }
+
+    const fd = new FormData(document.loginForm);
+
+    fetch(``, {
+      method: "POST",
+      body: fd,
+    })
+      .then((r) => r.json())
+      .then((obj) => {
+        console.log(obj);
+        if (obj.success) {
+          alert("登入成功");
+          const usp = new URLSearchParams(location.search);
+          if(usp.get('u')){
+            location.href = usp.get('u');
+          } else {
+            location.href = "/";
+          }
+          
+        } else {
+          alert("帳號或密碼錯誤!!!");
+        }
+      })
+      .catch(console.warn);
+  };
+</script>
+<%- include('parts/html-tail') %>
