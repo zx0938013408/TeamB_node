@@ -90,7 +90,7 @@
           <% for(let r of rows){ %>
             <tr>
               <td class="al_id"><%= r.al_id %></td>
-              <td><%= r.activity_name %></td>
+              <td class="activity_name"><%= r.activity_name %></td>
               <td>
               <% if(r.avatar){ %>
               <img src="/imgs/<%= r.avatar %>" alt="" width="100px" />
@@ -156,7 +156,7 @@
     const al_id = +tr.querySelector(".al_id").innerText;
     const activity_name = tr.querySelector(".activity_name").innerText;
     console.log({ al_id, activity_name });
-    if (confirm(`是否要刪除編號: ${al_id}, 姓名: ${activity_name} 的資料?`)) {
+    if (confirm(`是否要刪除編號: ${al_id}, 活動名稱: ${activity_name} 的資料?`)) {
       const r = await fetch(`/activity-list/api/${al_id}`, {
         method: "DELETE",
       });

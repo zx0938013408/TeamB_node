@@ -53,15 +53,15 @@ const getSportTypes = async () => {
     return [];
   }
 };
-//驗證表單結構
-const abSchema = z.object({
-  name: z
-    .string({ message: "姓名欄為必填" })
-    .min(3, { message: "請填寫正確的姓名" }),
-  email: z
-    .string({ message: "電子郵箱欄為必填" })
-    .email({ message: "請填寫正確的電子郵箱" }),
-});
+//驗證表單結構（未修改）
+// const abSchema = z.object({
+//   name: z
+//     .string({ message: "姓名欄為必填" })
+//     .min(3, { message: "請填寫正確的姓名" }),
+//   email: z
+//     .string({ message: "電子郵箱欄為必填" })
+//     .email({ message: "請填寫正確的電子郵箱" }),
+// });
 //
 //取得通訊錄清單
 const getListData = async (req) => {
@@ -152,7 +152,6 @@ const getListData = async (req) => {
   const sql = `SELECT 
         al_id, 
         activity_name, 
-        avatar,
         sport_name, 
         areas.name AS area_name, 
         court_info.address,
@@ -269,6 +268,85 @@ router.get("/api", async (req, res) => {
 // 取得單筆資料
 router.get("/api/:al_id", async (req, res) => {
   const output = await getItemById(req.params.al_id);
+  return res.json(output);
+});
+//
+// 新增通訊錄
+// router.post("/api", upload.single("avatar"), async (req, res) => {
+//   const output = {
+//     success: false,
+//     bodyData: req.body,
+//     result: null,
+//   };
+//   // let { name, email, mobile, birthday, address } = req.body;
+
+//   // TODO: 表單驗證
+//   const zResult = abSchema.safeParse(req.body);
+//   // 如果資料驗證沒過
+//   if (!zResult.success) {
+//     if (req.file?.filename) {
+//       removeUploadedImg(req.file.filename);
+//     }
+//     return res.json(zResult);
+//   }
+
+//   // 處理 birthday 沒有填寫的情況
+//   if (birthday === undefined) {
+//     birthday = null;
+//   } else {
+//     const b = moment(birthday);
+//     if (b.isValid()) {
+//       birthday = b.format(dateFormat);
+//     } else {
+//       birthday = null;
+//     }
+//   }
+//   const dataObj = { name, email, mobile, birthday, address };
+//   // 判斷有沒有上傳頭貼
+//   if (req.file?.filename) {
+//     dataObj.avatar = req.file.filename;
+//   }
+
+//   const sql = `
+//     INSERT INTO address_book SET ?;
+//   `;
+//   try {
+//     const [result] = await db.query(sql, [dataObj]);
+
+//     output.result = result;
+//     output.success = !!result.affectedRows;
+//   } catch (ex) {
+//     if (req.file?.filename) {
+//       removeUploadedImg(req.file.filename);
+//     }
+//     output.ex = ex;
+//   }
+
+//   res.json(output);
+// });
+// 刪除資料
+router.delete("/api/:al_id", async (req, res) => {
+  const output = {
+    success: false,
+    al_id: req.params.al_id,
+    error: "",
+  };
+  const { success, data, error } = await getItemById(req.params.al_id);
+  if (!success) {
+    // 沒拿到資料
+    output.error = error;
+    return res.json(output);
+  }
+
+  const { al_id, avatar } = data; // 欄位裡的檔名
+  if (avatar) {
+    output.hadRemovedUploaded = await removeUploadedImg(avatar);
+  }
+
+  const d_sql = `DELETE FROM activity_list WHERE  al_id=? `;
+  const [result] = await db.query(d_sql, [al_id]);
+  output.result = result; // 除錯用意
+  output.success = !!result.affectedRows;
   return res.json(output);
 });
 //
