@@ -70,8 +70,13 @@
             <tr>
               <td class="al_id"><%= r.al_id %></td>
               <td><%= r.activity_name %></td>
-              <td><%= r.photo_url %></td>
-              <td><%= r.sport_name %></td>
+              <td>
+              <% if(r.avatar){ %>
+              <img src="/imgs/<%= r.avatar %>" alt="" width="100px" />
+              <% } else { %>
+              <img src="/imgs/unnamed.png" alt="" width="100px" />
+              <% } %>
+              </td>              <td><%= r.sport_name %></td>
               <td><%= r.area_name %></td>
               <td><%= r.address %></td>
               <td><%= r.activity_time %></td>

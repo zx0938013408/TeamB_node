@@ -152,6 +152,7 @@ const getListData = async (req) => {
   const sql = `SELECT 
         al_id, 
         activity_name, 
+        avatar,
         sport_name, 
         areas.name AS area_name, 
         court_info.address,
