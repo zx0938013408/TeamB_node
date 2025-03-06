@@ -92,6 +92,41 @@
               <div class="form-text"></div>
             </div>
 
+            <div class="mb-3">
+              <label for="activity_time" class="form-label">活動時間</label>
+              <input type="datetime-local" class="form-control" id="activity_time" name="activity_time"
+                value="<%= activity_time ? activity_time : '' %>">
+            </div>
+
+            <div class="mb-3">
+              <label for="deadline" class="form-label">報名期限</label>
+              <input type="datetime-local" class="form-control" id="deadline" name="deadline"
+                value="<%= deadline ? deadline : '' %>">
+            </div>
+            <div class="mb-3">
+              <label for="payment" class="form-label">費用</label>
+              <input type="text" class="form-control" id="payment" name="payment"
+                value="<%= payment %>">
+              <div class="form-text"></div>
+            </div>
+            <div class="mb-3">
+              <label for="need_num" class="form-label">需求人數</label>
+              <input type="text" class="form-control" id="need_num" name="need_num"
+                value="<%= need_num %>">
+              <div class="form-text"></div>
+            </div>
+            <div class="mb-3">
+              <label for="introduction" class="form-label">活動簡介</label>
+              <textarea class="form-control"
+                id="introduction" name="introduction"><%= introduction %></textarea>
+            </div>
+            <div class="mb-3">
+              <label for="founder_id" class="form-label">開團者</label>
+              <input type="text" class="form-control" id="founder_id" name="founder_id"
+              disabled value="<%= founder_id %>">
+              <div class="form-text"></div>
+            </div>
+
             <button type="submit" class="btn btn-primary">修改</button>
           </form>
         </div>
