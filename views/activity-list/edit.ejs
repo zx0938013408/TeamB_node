@@ -65,8 +65,8 @@
                 <% try { %>
                   <% if (sportTypes && sportTypes.length > 0) { %>
                     <% sportTypes.forEach(sport => { %>
-                      <option value="<%= sport.id %>"><%= sport.sport_name %></option>
-                    <% }) %>
+                      <option value="<%= sport.id %>" <%= sport.id === sport_type_id ? 'selected' : '' %>><%= sport.sport_name %></option>
+                      <% }) %>
                   <% } else { %>
                     <option value="">無可用選項</option>
                   <% } %>
@@ -76,7 +76,21 @@
               </select>
             </div>
 
-            
+            <div class="mb-3">
+              <label for="area_id" class="form-label">行政區域</label>
+              <select name="area_id" id="area_id" class="form-select">
+                <option value="">--請選擇--</option>
+                <% areas.forEach(area => { %>
+                  <option value="<%= area.area_id %>" <%= area.area_id === area_id ? 'selected' : '' %>><%= area.name %></option>
+                  <% }) %>
+              </select>
+            </div>
+
+            <div class="mb-3">
+              <label for="address" class="form-label">活動地址</label>
+              <input type="text" class="form-control" id="address" name="address"  value="<%= address %>"/>
+              <div class="form-text"></div>
+            </div>
 
             <button type="submit" class="btn btn-primary">修改</button>
           </form>
@@ -140,20 +154,7 @@
     emailField.closest(".mb-3").classList.remove("error");
 
     let isPass = true; // 有沒有通過檢查, 預設值是 true
-    // TODO: 資料欄位的檢查
-    /*
-    if (nameField.value.length < 2) {
-      isPass = false;
-      nameField.nextElementSibling.innerHTML = "請填寫正確的姓名";
-      nameField.closest(".mb-3").classList.add("error");
-    }
 
-    if (!validateEmail(emailField.value)) {
-      isPass = false;
-      emailField.nextElementSibling.innerHTML = "請填寫正確的 Email";
-      emailField.closest(".mb-3").classList.add("error");
-    }
-*/
     if (isPass) {
       const fd = new FormData(document.forms[0]);
 
@@ -164,11 +165,7 @@
         .then((r) => r.json())
         .then((obj) => {
           console.log(obj);
-          /*
-          if (!obj.success && obj.error) {
-            alert(obj.error);
-          }
-          */
+          
           if (obj.success) {
             myModal.show(); // 呈現 modal
           } else {

@@ -53,6 +53,19 @@ const getSportTypes = async () => {
     return [];
   }
 };
+//
+// 取得行政區域
+const getAreas = async () => {
+  try {
+    const [rows] = await db.query("SELECT area_id, name FROM areas");
+    return rows;
+  } catch (error) {
+    console.error("取得 areas 時發生錯誤: ", error);
+    return [];
+  }
+};
+
+//
 //驗證表單結構（未修改）
 // const abSchema = z.object({
 //   name: z
@@ -75,6 +88,8 @@ const getListData = async (req) => {
     rows: [],
     keyword: "",
     sportTypes: [], // 加入 sportTypes
+    areas: [], // 加入 areas
+
   }
   output.sportTypes = await getSportTypes(); // <<-- 這行新增
   // 會員的編號
@@ -232,9 +247,13 @@ router.get("/add", async (req, res) => {
   res.locals.pageName = "ab-add";
 
   const sportTypes = await getSportTypes(); // 取得運動類型
+  const areas = await getAreas(); // 取得行政區域
+  const address = ""; // 預設活動地址為空
 
-  res.render("activity-list/add", { sportTypes });
+
+  res.render("activity-list/add", { sportTypes, areas, address });
 });
+
 router.get("/edit/:al_id", async (req, res) => {
   res.locals.title = "編輯通訊錄 - " + res.locals.title;
   res.locals.pageName = "al-edit";
@@ -243,19 +262,32 @@ router.get("/edit/:al_id", async (req, res) => {
   if (al_id < 1) {
     return res.redirect("/activity-list"); // 跳到列表頁
   }
-  const r_sql = `SELECT * FROM activity_list WHERE al_id=? `;
+  // 修改 SQL，確保獲取 `sport_type_id`, `area_id`, `address`
+  const r_sql = `
+    SELECT al.*, 
+    st.id AS sport_type_id, 
+    st.sport_name,
+    a.area_id, 
+    a.name AS area_name,
+    ci.address
+    FROM activity_list al
+    JOIN sport_type st ON al.sport_type_id = st.id
+    JOIN areas a ON al.area_id = a.area_id
+    JOIN court_info ci ON al.court_id = ci.id
+    WHERE al.al_id=?`;
   const [rows] = await db.query(r_sql, [al_id]);
   if (!rows.length) {
     return res.redirect("/activity-list"); // 沒有該筆資料, 跳走
   }
   const item = rows[0];
   const sportTypes = await getSportTypes(); // 取得運動類型
+  const areas = await getAreas(); // 取得行政區域
 
-  if (item.birthday) {
+  if (item.activity_time) {
     // 生日轉換成 YYYY-MM-DD
-    item.birthday = moment(item.birthday).format(dateFormat);
+    item.activity_time = moment(item.activity_time).format(dateFormat);
   }
-  res.render("activity-list/edit", { ...item,item, sportTypes  });
+  res.render("activity-list/edit", { ...item,item, sportTypes, areas  });
 });
 //
 // ******************** API ****************************
@@ -351,6 +383,49 @@ router.delete("/api/:al_id", async (req, res) => {
 });
 //
 //新增資料
+router.post("/edit/:al_id", async (req, res) => {
+  const output = {
+    success: false,
+    al_id: req.params.al_id,
+    error: "",
+  };
+
+  const { activity_name, sport_type_id, area_id, address, activity_time, deadline, payment, need_num, introduction } = req.body;
+  
+  const sql = `UPDATE activity_list SET 
+    activity_name=?, 
+    sport_type_id=?, 
+    area_id=?, 
+    address=?, 
+    activity_time=?, 
+    deadline=?, 
+    payment=?, 
+    need_num=?, 
+    introduction=? 
+    WHERE al_id=?`;
+
+  try {
+    const [result] = await db.query(sql, [
+      activity_name,
+      sport_type_id,
+      area_id,
+      address,  // << 確保 address 可以修改
+      activity_time,
+      deadline,
+      payment,
+      need_num,
+      introduction,
+      req.params.al_id
+    ]);
+
+    output.success = !!result.affectedRows;
+  } catch (error) {
+    output.error = error.message;
+  }
+
+  res.json(output);
+});
+//
 // router.post("/api", upload.single("avatar"), async (req, res) => {
 //   const output = {
 //     success: false,
