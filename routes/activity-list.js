@@ -6,7 +6,7 @@ import db from "../utils/connect-mysql.js";
 import upload from "../utils/upload-images.js";
 
 const router = express.Router();
-const dateFormat = "YYYY-MM-DD";
+const dateFormat = "YYYY-MM-DDTHH:mm";
 
 // *** 刪除沒用到的已上傳的圖檔
 const removeUploadedImg = async (file) => {
@@ -189,13 +189,13 @@ const getListData = async (req) => {
   // 格式化活動日期(各自資料庫有時間設定的需求改寫下列)
   rows.forEach((r) => {
     const b = moment(r.activity_time);
-    r.activity_time = b.isValid() ? b.format("YYYY-MM-DD") : "";
+    r.activity_time = b.isValid() ? b.format("YYYY-MM-DDTHH:mm") : "";
     const d = moment(r.deadline);
-    r.deadline = d.isValid() ? d.format("YYYY-MM-DD") : "";
+    r.deadline = d.isValid() ? d.format("YYYY-MM-DDTHH:mm") : "";
     const c = moment(r.create_time);
-    r.create_time = c.isValid() ? c.format("YYYY-MM-DD") : "";
+    r.create_time = c.isValid() ? c.format("YYYY-MM-DDTHH:mm") : "";
     const u = moment(r.update_time);
-    r.update_time = u.isValid() ? u.format("YYYY-MM-DD") : "";
+    r.update_time = u.isValid() ? u.format("YYYY-MM-DDTHH:mm") : "";
   });
   //
   // 回傳結果
@@ -283,9 +283,12 @@ router.get("/edit/:al_id", async (req, res) => {
   const sportTypes = await getSportTypes(); // 取得運動類型
   const areas = await getAreas(); // 取得行政區域
 
+  // 活動時間及截止日轉換成 YYYY-MM-DDTHH:mm
   if (item.activity_time) {
-    // 生日轉換成 YYYY-MM-DD
     item.activity_time = moment(item.activity_time).format(dateFormat);
+  }
+  if (item.deadline) {
+    item.deadline = moment(item.deadline).format(dateFormat);
   }
   res.render("activity-list/edit", { ...item,item, sportTypes, areas  });
 });
