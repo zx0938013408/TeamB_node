@@ -27,8 +27,8 @@
             </div>
 
             <div class="mb-3">
-              <label for="name" class="form-label">活動名稱</label>
-              <input type="text" class="form-control" id="name" name="name"  value="<%= activity_name %>"/>
+              <label for="activity_name" class="form-label">活動名稱</label>
+              <input type="text" class="form-control" id="activity_name" name="activity_name"  value="<%= activity_name %>"/>
               <div class="form-text"></div>
             </div>
 
@@ -123,7 +123,7 @@
             <div class="mb-3">
               <label for="founder_id" class="form-label">開團者</label>
               <input type="text" class="form-control" id="founder_id" name="founder_id"
-              disabled value="<%= founder_id %>">
+              disabled value="<%= founder_name %>">
               <div class="form-text"></div>
             </div>
 
@@ -169,31 +169,34 @@
 
 <%- include('../parts/html-scripts') %>
 <script>
+  // 各自若需要表單驗證自行定義
   const locals = <%- JSON.stringify(locals) %>;
   const originalData = <%- JSON.stringify(item) %>; // 原來項目內容資料
-  const nameField = document.querySelector("#name");
-  const emailField = document.querySelector("#email");
+  const nameField = document.querySelector("#activity_name");
+  // const emailField = document.querySelector("#email");
   const myModal = new bootstrap.Modal("#exampleModal");
 
-  function validateEmail(email) {
-    // 使用 regular expression 檢查 email 格式正不正確
-    const pattern =
-      /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
-    return pattern.test(email);
-  }
+  // function validateEmail(email) {
+  //   // 使用 regular expression 檢查 email 格式正不正確
+  //   const pattern =
+  //     /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+  //   return pattern.test(email);
+  // }
 
   const sendData = (e) => {
     e.preventDefault(); // 不要讓表單以傳統的方式送出
 
     nameField.closest(".mb-3").classList.remove("error");
-    emailField.closest(".mb-3").classList.remove("error");
+    //emailField.closest(".mb-3").classList.remove("error");
 
     let isPass = true; // 有沒有通過檢查, 預設值是 true
-
+    
     if (isPass) {
+      // 請確認抓取到的表單資料是否正確
       const fd = new FormData(document.forms[0]);
-
-      fetch(`/address-book/api/${originalData.ab_id}`, {
+      console.log(fd);
+      
+      fetch(`/activity-list/api/${originalData.al_id}`, {
         method: "PUT",
         body: fd,
       })
@@ -208,10 +211,7 @@
               if (item.path[0] === "name") {
                 nameField.nextElementSibling.innerHTML = item.message;
                 nameField.closest(".mb-3").classList.add("error");
-              } else if (item.path[0] === "email") {
-                emailField.nextElementSibling.innerHTML = item.message;
-                emailField.closest(".mb-3").classList.add("error");
-              }
+              } 
             });
           }
         })
@@ -235,7 +235,7 @@
         preview.src = `/imgs/unnamed.png`;
       }
     }
-  };
+  };  
 </script>
 
 <%- include('../parts/html-tail') %>

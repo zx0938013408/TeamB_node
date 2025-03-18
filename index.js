@@ -204,6 +204,8 @@ app.get("/logout", async (req, res) => {
   }
   res.redirect("/");
 });
+
+
 /*
 // react project
 app.use("/", express.static("build"));
