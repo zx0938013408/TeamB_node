@@ -67,14 +67,14 @@ const getAreas = async () => {
 
 //
 //驗證表單結構（未修改）
-// const abSchema = z.object({
-//   name: z
-//     .string({ message: "姓名欄為必填" })
-//     .min(3, { message: "請填寫正確的姓名" }),
-//   email: z
-//     .string({ message: "電子郵箱欄為必填" })
-//     .email({ message: "請填寫正確的電子郵箱" }),
-// });
+const abSchema = z.object({
+  activity_name: z
+    .string({ message: "活動欄為必填" })
+    .min(3, { message: "活動名稱最少三個字" }),
+  // email: z
+  //   .string({ message: "電子郵箱欄為必填" })
+  //   .email({ message: "請填寫正確的電子郵箱" })
+});
 //
 //取得通訊錄清單
 const getListData = async (req) => {
@@ -189,13 +189,19 @@ const getListData = async (req) => {
   // 格式化活動日期(各自資料庫有時間設定的需求改寫下列)
   rows.forEach((r) => {
     const b = moment(r.activity_time);
-    r.activity_time = b.isValid() ? b.format("YYYY-MM-DDTHH:mm") : "";
+    r.activity_time = b.isValid() ? b.format("YYYY-MM-DD HH:mm") : "";
     const d = moment(r.deadline);
-    r.deadline = d.isValid() ? d.format("YYYY-MM-DDTHH:mm") : "";
+    r.deadline = d.isValid() ? d.format("YYYY-MM-DD HH:mm") : "";
     const c = moment(r.create_time);
-    r.create_time = c.isValid() ? c.format("YYYY-MM-DDTHH:mm") : "";
+    r.create_time = c.isValid() ? c.format("YYYY-MM-DD HH:mm") : "";
     const u = moment(r.update_time);
-    r.update_time = u.isValid() ? u.format("YYYY-MM-DDTHH:mm") : "";
+    r.update_time = u.isValid() ? u.format("YYYY-MM-DD HH:mm") : "";
+
+     // 安全處理 payment，確保它是數字
+  if (r.payment !== null && r.payment !== undefined) {
+    r.payment = parseFloat(r.payment); // 確保是數字
+    r.payment = Number.isInteger(r.payment) ? r.payment.toString() : r.payment.toFixed(2);
+  }
   });
   //
   // 回傳結果
@@ -269,11 +275,13 @@ router.get("/edit/:al_id", async (req, res) => {
     st.sport_name,
     a.area_id, 
     a.name AS area_name,
-    ci.address
+    ci.address,
+    m.name AS founder_name
     FROM activity_list al
     JOIN sport_type st ON al.sport_type_id = st.id
     JOIN areas a ON al.area_id = a.area_id
     JOIN court_info ci ON al.court_id = ci.id
+    JOIN members m ON al.founder_id = m.id
     WHERE al.al_id=?`;
   const [rows] = await db.query(r_sql, [al_id]);
   if (!rows.length) {
@@ -306,59 +314,6 @@ router.get("/api/:al_id", async (req, res) => {
   return res.json(output);
 });
 //
-// 新增通訊錄
-// router.post("/api", upload.single("avatar"), async (req, res) => {
-//   const output = {
-//     success: false,
-//     bodyData: req.body,
-//     result: null,
-//   };
-//   // let { name, email, mobile, birthday, address } = req.body;
-
-//   // TODO: 表單驗證
-//   const zResult = abSchema.safeParse(req.body);
-//   // 如果資料驗證沒過
-//   if (!zResult.success) {
-//     if (req.file?.filename) {
-//       removeUploadedImg(req.file.filename);
-//     }
-//     return res.json(zResult);
-//   }
-
-//   // 處理 birthday 沒有填寫的情況
-//   if (birthday === undefined) {
-//     birthday = null;
-//   } else {
-//     const b = moment(birthday);
-//     if (b.isValid()) {
-//       birthday = b.format(dateFormat);
-//     } else {
-//       birthday = null;
-//     }
-//   }
-//   const dataObj = { name, email, mobile, birthday, address };
-//   // 判斷有沒有上傳頭貼
-//   if (req.file?.filename) {
-//     dataObj.avatar = req.file.filename;
-//   }
-
-//   const sql = `
-//     INSERT INTO address_book SET ?;
-//   `;
-//   try {
-//     const [result] = await db.query(sql, [dataObj]);
-
-//     output.result = result;
-//     output.success = !!result.affectedRows;
-//   } catch (ex) {
-//     if (req.file?.filename) {
-//       removeUploadedImg(req.file.filename);
-//     }
-//     output.ex = ex;
-//   }
-
-//   res.json(output);
-// });
 // 刪除資料
 router.delete("/api/:al_id", async (req, res) => {
   const output = {
@@ -385,7 +340,7 @@ router.delete("/api/:al_id", async (req, res) => {
   return res.json(output);
 });
 //
-//新增資料
+// 編輯資料
 router.post("/edit/:al_id", async (req, res) => {
   const output = {
     success: false,
@@ -429,57 +384,154 @@ router.post("/edit/:al_id", async (req, res) => {
   res.json(output);
 });
 //
-// router.post("/api", upload.single("avatar"), async (req, res) => {
-//   const output = {
-//     success: false,
-//     bodyData: req.body,
-//     result: null,
-//   };
-//   let { name, email, mobile, birthday, address } = req.body;
-//   const zResult = abSchema.safeParse(req.body);
+// 表單送出更新資料庫
+router.post("/api", upload.single("avatar"), async (req, res) => {
+  const output = {
+    success: false,
+    bodyData: req.body,
+    result: null,
+  };
+  let { activity_name, sport_type_id, area_id, address, activity_time, deadline, payment, need_num, introduction } = req.body;
+  const zResult = abSchema.safeParse(req.body);
 
-//   // 如果資料驗證沒過
-//   if (!zResult.success) {
-//     if (req.file?.filename) {
-//       removeUploadedImg(req.file.filename);
-//     }
-//     return res.json(zResult);
-//   }
+  // 如果資料驗證沒過
+  if (!zResult.success) {
+    if (req.file && req.file.filename) {
+      removeUploadedImg(req.file.filename);
+    }
+    return res.json(zResult);
+  }
 
-//   // 處理 birthday 沒有填寫的情況
-//   if (birthday === undefined) {
-//     birthday = null;
-//   } else {
-//     const b = moment(birthday);
-//     if (b.isValid()) {
-//       birthday = b.format(dateFormat);
-//     } else {
-//       birthday = null;
-//     }
-//   }
+  // 處理 活動時間及截止日期 沒有填寫的情況
+  if (activity_time === undefined) {
+    activity_time = null;
+  } else {
+    const b = moment(activity_time);
+    if (b.isValid()) {
+      activity_time = b.format(dateFormat);
+    } else {
+      activity_time = null;
+    }
+  }
+  if (deadline === undefined) {
+    deadline = null;
+  } else {
+    const b = moment(deadline);
+    if (b.isValid()) {
+      deadline = b.format(dateFormat);
+    } else {
+      deadline = null;
+    }
+  }
 
-//   const dataObj = { name, email, mobile, birthday, address };
-//   // 判斷有沒有上傳頭貼
-//   if (req.file?.filename) {
-//     dataObj.avatar = req.file.filename;
-//   }
+  const dataObj = { activity_name, sport_type_id, area_id, address, activity_time, deadline, payment, need_num, introduction };
+  // 判斷有沒有上傳頭貼
+  if (req.file && req.file.filename) {
+    dataObj.avatar = req.file.filename;
+  }
 
-//   const sql = `
-//     INSERT INTO address_book SET ?;
-//   `;
-//   try {
-//     const [result] = await db.query(sql, [dataObj]);
+  const sql = `
+    INSERT INTO activity_list SET ?;
+  `;
+  try {
+    const [result] = await db.query(sql, [dataObj]);
 
-//     output.result = result;
-//     output.success = !!result.affectedRows;
-//   } catch (ex) {
-//     if (req.file?.filename) {
-//       removeUploadedImg(req.file.filename);
-//     }
-//     output.ex = ex;
-//   }
+    output.result = result;
+    output.success = !!result.affectedRows;
+  } catch (ex) {
+    if (req.file && req.file.filename) {
+      removeUploadedImg(req.file.filename);
+    }
+    output.ex = ex;
+  }
 
-//   res.json(output);
-// });
+  res.json(output);
+});
+//
+//
+router.put("/api/:al_id", upload.single("avatar"), async (req, res) => {
+  console.log("收到的 req.body:", req.body);  // 確保 req.body 不是 undefined
+  console.log("收到的 activity_name:", req.body.activity_name);  // 確保 activity_name 有資料
+
+  const output = {
+    success: false,
+    bodyData: req.body,
+    result: null,
+    error: "",
+  };
+
+  // 先取到原本的項目資料
+  const {
+    success,
+    error,
+    data: originalData,
+  } = await getItemById(req.params.al_id);
+  if (!success) {
+    output.error = error;
+    return res.json(output);
+  }
+  // 表單資料
+  let { activity_name, sport_type_id, area_id, address, activity_time, deadline, payment, need_num, introduction } = req.body;
+
+  // 表單驗證
+  const zResult = abSchema.safeParse(req.body);
+  // 如果資料驗證沒過
+  if (!zResult.success) {
+    if (req.file && req.file.filename) {
+      removeUploadedImg(req.file.filename);
+    }
+    return res.json(zResult);
+  }
+
+  // 處理 活動時間及截止日期 沒有填寫的情況
+  if (activity_time === undefined) {
+    activity_time = null;
+  } else {
+    const b = moment(activity_time);
+    if (b.isValid()) {
+      activity_time = b.format(dateFormat);
+    } else {
+      activity_time = null;
+    }
+  }
+  if (deadline === undefined) {
+    deadline = null;
+  } else {
+    const b = moment(deadline);
+    if (b.isValid()) {
+      deadline = b.format(dateFormat);
+    } else {
+      deadline = null;
+    }
+  }
+
+  const dataObj = { activity_name, sport_type_id, area_id, address, activity_time, deadline, payment, need_num, introduction };
+  // 判斷有沒有上傳頭貼
+  if (req.file && req.file.filename) {
+    dataObj.avatar = req.file.filename;
+  }
+
+  const sql = `
+    UPDATE activity_list SET ? WHERE al_id=?;
+  `;
+  try {
+    const [result] = await db.query(sql, [dataObj, originalData.al_id]);
+    output.result = result;
+    output.success = !!result.changedRows;
+    // 判斷有沒有上傳頭貼, 有的話刪掉之前的頭貼
+    if (req.file && req.file.filename) {
+      removeUploadedImg(originalData.avatar);
+    }
+  } catch (ex) {
+    if (req.file && req.file.filename) {
+      removeUploadedImg(req.file.filename);
+    }
+    output.ex = ex;
+  }
+
+  res.json(output);
+  
+});
+
 
 export default router;
