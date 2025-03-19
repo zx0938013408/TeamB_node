@@ -32,13 +32,41 @@ const getItemById = async (id) => {
     output.error = "錯誤的編號";
     return output;
   }
-  const r_sql = `SELECT * FROM activity_list WHERE al_id=? `;
+  const r_sql = `
+    SELECT al.*, 
+    st.sport_name, 
+    a.name AS area_name, 
+    ci.name AS court_name,
+    ci.address, 
+    m.name AS name
+    FROM activity_list al
+    JOIN sport_type st ON al.sport_type_id = st.id
+    JOIN areas a ON al.area_id = a.area_id
+    JOIN court_info ci ON al.court_id = ci.id
+    JOIN members m ON al.founder_id = m.id
+    WHERE al.al_id = ?`;
   const [rows] = await db.query(r_sql, [al_id]);
   if (!rows.length) {
     output.error = "沒有該筆資料";
     return output;
   }
-  output.data = rows[0];
+
+  const item = rows[0];
+  // 格式化時間欄位（根據需要調整格式）
+  if (item.activity_time) {
+    item.activity_time = moment(item.activity_time).format("YYYY-MM-DD HH:mm");
+  }
+  if (item.deadline) {
+    item.deadline = moment(item.deadline).format("YYYY-MM-DD HH:mm");
+  }
+  if (item.create_time) {
+    item.create_time = moment(item.create_time).format("YYYY-MM-DD HH:mm");
+  }
+  if (item.update_time) {
+    item.update_time = moment(item.update_time).format("YYYY-MM-DD HH:mm");
+  }
+
+  output.data = item;
   output.success = true;
   return output;
 };
@@ -216,14 +244,13 @@ router.use((req, res, next) => {
   if (whiteList.includes(url)) {
     return next(); // 讓用戶通過
   }
-  if (!req.session.admin) {
-    const usp = new URLSearchParams();
-    usp.set("u", req.originalUrl);
-    return res.redirect(`/login?${usp}`); // 提示登入後要前往的頁面
-  }
+  // if (!req.session.admin) {
+  //   const usp = new URLSearchParams();
+  //   usp.set("u", req.originalUrl);
+  //   return res.redirect(`/login?${usp}`); // 提示登入後要前往的頁面
+  // }
   next();
 });
-//
 //前端頁面（更改自己的前端頁面檔名）
 router.get("/", async (req, res) => {
   res.locals.title = "通訊錄列表 - " + res.locals.title;
@@ -310,7 +337,9 @@ router.get("/api", async (req, res) => {
 //
 // 取得單筆資料
 router.get("/api/:al_id", async (req, res) => {
+  console.log("API 被呼叫了，al_id:", req.params.al_id);
   const output = await getItemById(req.params.al_id);
+  console.log("API 回傳資料:", output);
   return res.json(output);
 });
 //
