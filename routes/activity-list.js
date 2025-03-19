@@ -36,6 +36,7 @@ const getItemById = async (id) => {
     SELECT al.*, 
     st.sport_name, 
     a.name AS area_name, 
+    ci.name AS court_name,
     ci.address, 
     m.name AS name
     FROM activity_list al
@@ -50,9 +51,7 @@ const getItemById = async (id) => {
     return output;
   }
 
-
   const item = rows[0];
-
   // 格式化時間欄位（根據需要調整格式）
   if (item.activity_time) {
     item.activity_time = moment(item.activity_time).format("YYYY-MM-DD HH:mm");
