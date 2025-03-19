@@ -216,14 +216,13 @@ router.use((req, res, next) => {
   if (whiteList.includes(url)) {
     return next(); // 讓用戶通過
   }
-  if (!req.session.admin) {
-    const usp = new URLSearchParams();
-    usp.set("u", req.originalUrl);
-    return res.redirect(`/login?${usp}`); // 提示登入後要前往的頁面
-  }
+  // if (!req.session.admin) {
+  //   const usp = new URLSearchParams();
+  //   usp.set("u", req.originalUrl);
+  //   return res.redirect(`/login?${usp}`); // 提示登入後要前往的頁面
+  // }
   next();
 });
-//
 //前端頁面（更改自己的前端頁面檔名）
 router.get("/", async (req, res) => {
   res.locals.title = "通訊錄列表 - " + res.locals.title;
@@ -310,7 +309,9 @@ router.get("/api", async (req, res) => {
 //
 // 取得單筆資料
 router.get("/api/:al_id", async (req, res) => {
+  console.log("API 被呼叫了，al_id:", req.params.al_id);
   const output = await getItemById(req.params.al_id);
+  console.log("API 回傳資料:", output);
   return res.json(output);
 });
 //
