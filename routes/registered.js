@@ -27,7 +27,7 @@ router.get("/api", async (req, res) => {
 /**
  * 取得單筆報名資料
  */
-router.get("/api/register/:reg_id", async (req, res) => {
+router.get("/api:reg_id", async (req, res) => {
   const { reg_id } = req.params;
   try {
     const [rows] = await db.query(`
@@ -52,7 +52,7 @@ router.get("/api/register/:reg_id", async (req, res) => {
 /**
  * 新增報名資料
  */
-router.post("/api/register", async (req, res) => {
+router.post("/api", async (req, res) => {
   const { member_id, activity_id, num, notes } = req.body;
 
   if (!member_id || !activity_id || !num) {
@@ -73,7 +73,7 @@ router.post("/api/register", async (req, res) => {
 /**
  * 更新報名資料
  */
-router.put("/api/register/:reg_id", async (req, res) => {
+router.put("/api:reg_id", async (req, res) => {
   const { reg_id } = req.params;
   const { num, notes } = req.body;
 
@@ -91,7 +91,7 @@ router.put("/api/register/:reg_id", async (req, res) => {
 /**
  * 刪除報名資料
  */
-router.delete("/api/register/:reg_id", async (req, res) => {
+router.delete("/api:reg_id", async (req, res) => {
   const { reg_id } = req.params;
 
   try {
