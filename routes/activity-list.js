@@ -204,6 +204,7 @@ const getListData = async (req) => {
         sport_name, 
         areas.name AS area_name, 
         court_info.address,
+        court_info.name court_name,
         activity_time, 
         deadline, 
         payment, 
