@@ -32,13 +32,48 @@ const getItemById = async (id) => {
     output.error = "錯誤的編號";
     return output;
   }
-  const r_sql = `SELECT * FROM activity_list WHERE al_id=? `;
+  const r_sql = `
+    SELECT al.*, 
+    st.sport_name, 
+    a.name AS area_name, 
+    ci.name AS court_name,
+    ci.address, 
+    m.name AS name
+    FROM activity_list al
+    JOIN sport_type st ON al.sport_type_id = st.id
+    JOIN areas a ON al.area_id = a.area_id
+    JOIN court_info ci ON al.court_id = ci.id
+    JOIN members m ON al.founder_id = m.id
+    WHERE al.al_id = ?`;
   const [rows] = await db.query(r_sql, [al_id]);
   if (!rows.length) {
     output.error = "沒有該筆資料";
     return output;
   }
-  output.data = rows[0];
+
+  const item = rows[0];
+  // 格式化時間欄位（根據需要調整格式）
+  if (item.activity_time) {
+    item.activity_time = moment(item.activity_time).format("YYYY-MM-DD HH:mm");
+  }
+  if (item.deadline) {
+    item.deadline = moment(item.deadline).format("YYYY-MM-DD HH:mm");
+  }
+  if (item.create_time) {
+    item.create_time = moment(item.create_time).format("YYYY-MM-DD HH:mm");
+  }
+  if (item.update_time) {
+    item.update_time = moment(item.update_time).format("YYYY-MM-DD HH:mm");
+  }
+  // 安全處理 payment，確保它是數字
+  if (item.payment !== null && item.payment !== undefined) {
+    item.payment = parseFloat(item.payment); // 確保是數字
+    item.payment = Number.isInteger(item.payment)
+      ? item.payment.toString()
+      : item.payment.toFixed(2);
+  }
+
+  output.data = item;
   output.success = true;
   return output;
 };
@@ -89,8 +124,7 @@ const getListData = async (req) => {
     keyword: "",
     sportTypes: [], // 加入 sportTypes
     areas: [], // 加入 areas
-
-  }
+  };
   output.sportTypes = await getSportTypes(); // <<-- 這行新增
   // 會員的編號
   //const member_id = req.session.admin?.member.id || 0;
@@ -170,6 +204,7 @@ const getListData = async (req) => {
         sport_name, 
         areas.name AS area_name, 
         court_info.address,
+        court_info.name court_name,
         activity_time, 
         deadline, 
         payment, 
@@ -197,16 +232,17 @@ const getListData = async (req) => {
     const u = moment(r.update_time);
     r.update_time = u.isValid() ? u.format("YYYY-MM-DD HH:mm") : "";
 
-     // 安全處理 payment，確保它是數字
-  if (r.payment !== null && r.payment !== undefined) {
-    r.payment = parseFloat(r.payment); // 確保是數字
-    r.payment = Number.isInteger(r.payment) ? r.payment.toString() : r.payment.toFixed(2);
-  }
+    // 安全處理 payment，確保它是數字
+    if (r.payment !== null && r.payment !== undefined) {
+      r.payment = parseFloat(r.payment); // 確保是數字
+      r.payment = Number.isInteger(r.payment)
+        ? r.payment.toString()
+        : r.payment.toFixed(2);
+    }
   });
   //
   // 回傳結果
-  return { ...output, totalRows, totalPages, page, rows, success: true 
-  };
+  return { ...output, totalRows, totalPages, page, rows, success: true };
 };
 //
 // 路由權限管理
@@ -216,14 +252,13 @@ router.use((req, res, next) => {
   if (whiteList.includes(url)) {
     return next(); // 讓用戶通過
   }
-  if (!req.session.admin) {
-    const usp = new URLSearchParams();
-    usp.set("u", req.originalUrl);
-    return res.redirect(`/login?${usp}`); // 提示登入後要前往的頁面
-  }
+  // if (!req.session.admin) {
+  //   const usp = new URLSearchParams();
+  //   usp.set("u", req.originalUrl);
+  //   return res.redirect(`/login?${usp}`); // 提示登入後要前往的頁面
+  // }
   next();
 });
-//
 //前端頁面（更改自己的前端頁面檔名）
 router.get("/", async (req, res) => {
   res.locals.title = "通訊錄列表 - " + res.locals.title;
@@ -245,7 +280,6 @@ router.get("/", async (req, res) => {
   }
   // 確保 sportTypes 傳入 EJS
   res.render("activity-list/list", { ...data });
-
 });
 
 router.get("/add", async (req, res) => {
@@ -255,7 +289,6 @@ router.get("/add", async (req, res) => {
   const sportTypes = await getSportTypes(); // 取得運動類型
   const areas = await getAreas(); // 取得行政區域
   const address = ""; // 預設活動地址為空
-
 
   res.render("activity-list/add", { sportTypes, areas, address });
 });
@@ -298,7 +331,7 @@ router.get("/edit/:al_id", async (req, res) => {
   if (item.deadline) {
     item.deadline = moment(item.deadline).format(dateFormat);
   }
-  res.render("activity-list/edit", { ...item,item, sportTypes, areas  });
+  res.render("activity-list/edit", { ...item, item, sportTypes, areas });
 });
 //
 // ******************** API ****************************
@@ -310,7 +343,9 @@ router.get("/api", async (req, res) => {
 //
 // 取得單筆資料
 router.get("/api/:al_id", async (req, res) => {
+  console.log("API 被呼叫了，al_id:", req.params.al_id);
   const output = await getItemById(req.params.al_id);
+  console.log("API 回傳資料:", output);
   return res.json(output);
 });
 //
@@ -348,8 +383,18 @@ router.post("/edit/:al_id", async (req, res) => {
     error: "",
   };
 
-  const { activity_name, sport_type_id, area_id, address, activity_time, deadline, payment, need_num, introduction } = req.body;
-  
+  const {
+    activity_name,
+    sport_type_id,
+    area_id,
+    address,
+    activity_time,
+    deadline,
+    payment,
+    need_num,
+    introduction,
+  } = req.body;
+
   const sql = `UPDATE activity_list SET 
     activity_name=?, 
     sport_type_id=?, 
@@ -367,13 +412,13 @@ router.post("/edit/:al_id", async (req, res) => {
       activity_name,
       sport_type_id,
       area_id,
-      address,  // << 確保 address 可以修改
+      address, // << 確保 address 可以修改
       activity_time,
       deadline,
       payment,
       need_num,
       introduction,
-      req.params.al_id
+      req.params.al_id,
     ]);
 
     output.success = !!result.affectedRows;
@@ -391,7 +436,17 @@ router.post("/api", upload.single("avatar"), async (req, res) => {
     bodyData: req.body,
     result: null,
   };
-  let { activity_name, sport_type_id, area_id, address, activity_time, deadline, payment, need_num, introduction } = req.body;
+  let {
+    activity_name,
+    sport_type_id,
+    area_id,
+    address,
+    activity_time,
+    deadline,
+    payment,
+    need_num,
+    introduction,
+  } = req.body;
   const zResult = abSchema.safeParse(req.body);
 
   // 如果資料驗證沒過
@@ -424,7 +479,17 @@ router.post("/api", upload.single("avatar"), async (req, res) => {
     }
   }
 
-  const dataObj = { activity_name, sport_type_id, area_id, address, activity_time, deadline, payment, need_num, introduction };
+  const dataObj = {
+    activity_name,
+    sport_type_id,
+    area_id,
+    address,
+    activity_time,
+    deadline,
+    payment,
+    need_num,
+    introduction,
+  };
   // 判斷有沒有上傳頭貼
   if (req.file && req.file.filename) {
     dataObj.avatar = req.file.filename;
@@ -450,8 +515,8 @@ router.post("/api", upload.single("avatar"), async (req, res) => {
 //
 //
 router.put("/api/:al_id", upload.single("avatar"), async (req, res) => {
-  console.log("收到的 req.body:", req.body);  // 確保 req.body 不是 undefined
-  console.log("收到的 activity_name:", req.body.activity_name);  // 確保 activity_name 有資料
+  console.log("收到的 req.body:", req.body); // 確保 req.body 不是 undefined
+  console.log("收到的 activity_name:", req.body.activity_name); // 確保 activity_name 有資料
 
   const output = {
     success: false,
@@ -471,7 +536,17 @@ router.put("/api/:al_id", upload.single("avatar"), async (req, res) => {
     return res.json(output);
   }
   // 表單資料
-  let { activity_name, sport_type_id, area_id, address, activity_time, deadline, payment, need_num, introduction } = req.body;
+  let {
+    activity_name,
+    sport_type_id,
+    area_id,
+    address,
+    activity_time,
+    deadline,
+    payment,
+    need_num,
+    introduction,
+  } = req.body;
 
   // 表單驗證
   const zResult = abSchema.safeParse(req.body);
@@ -505,7 +580,17 @@ router.put("/api/:al_id", upload.single("avatar"), async (req, res) => {
     }
   }
 
-  const dataObj = { activity_name, sport_type_id, area_id, address, activity_time, deadline, payment, need_num, introduction };
+  const dataObj = {
+    activity_name,
+    sport_type_id,
+    area_id,
+    address,
+    activity_time,
+    deadline,
+    payment,
+    need_num,
+    introduction,
+  };
   // 判斷有沒有上傳頭貼
   if (req.file && req.file.filename) {
     dataObj.avatar = req.file.filename;
@@ -530,8 +615,6 @@ router.put("/api/:al_id", upload.single("avatar"), async (req, res) => {
   }
 
   res.json(output);
-  
 });
-
 
 export default router;
