@@ -24,8 +24,8 @@ app.use(express.static("public"));
 app.use("/bootstrap", express.static("node_modules/bootstrap/dist"));
 
 // **** top-level middlewares 頂層中介軟體 ****
-app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 const corsOptions = {
   credentials: true,
   origin: (origin, callback) => {
