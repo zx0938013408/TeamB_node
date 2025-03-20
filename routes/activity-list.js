@@ -65,6 +65,13 @@ const getItemById = async (id) => {
   if (item.update_time) {
     item.update_time = moment(item.update_time).format("YYYY-MM-DD HH:mm");
   }
+  // 安全處理 payment，確保它是數字
+  if (item.payment !== null && item.payment !== undefined) {
+    item.payment = parseFloat(item.payment); // 確保是數字
+    item.payment = Number.isInteger(item.payment)
+      ? item.payment.toString()
+      : item.payment.toFixed(2);
+  }
 
   output.data = item;
   output.success = true;
@@ -117,8 +124,7 @@ const getListData = async (req) => {
     keyword: "",
     sportTypes: [], // 加入 sportTypes
     areas: [], // 加入 areas
-
-  }
+  };
   output.sportTypes = await getSportTypes(); // <<-- 這行新增
   // 會員的編號
   //const member_id = req.session.admin?.member.id || 0;
@@ -225,16 +231,17 @@ const getListData = async (req) => {
     const u = moment(r.update_time);
     r.update_time = u.isValid() ? u.format("YYYY-MM-DD HH:mm") : "";
 
-     // 安全處理 payment，確保它是數字
-  if (r.payment !== null && r.payment !== undefined) {
-    r.payment = parseFloat(r.payment); // 確保是數字
-    r.payment = Number.isInteger(r.payment) ? r.payment.toString() : r.payment.toFixed(2);
-  }
+    // 安全處理 payment，確保它是數字
+    if (r.payment !== null && r.payment !== undefined) {
+      r.payment = parseFloat(r.payment); // 確保是數字
+      r.payment = Number.isInteger(r.payment)
+        ? r.payment.toString()
+        : r.payment.toFixed(2);
+    }
   });
   //
   // 回傳結果
-  return { ...output, totalRows, totalPages, page, rows, success: true 
-  };
+  return { ...output, totalRows, totalPages, page, rows, success: true };
 };
 //
 // 路由權限管理
@@ -272,7 +279,6 @@ router.get("/", async (req, res) => {
   }
   // 確保 sportTypes 傳入 EJS
   res.render("activity-list/list", { ...data });
-
 });
 
 router.get("/add", async (req, res) => {
@@ -282,7 +288,6 @@ router.get("/add", async (req, res) => {
   const sportTypes = await getSportTypes(); // 取得運動類型
   const areas = await getAreas(); // 取得行政區域
   const address = ""; // 預設活動地址為空
-
 
   res.render("activity-list/add", { sportTypes, areas, address });
 });
@@ -325,7 +330,7 @@ router.get("/edit/:al_id", async (req, res) => {
   if (item.deadline) {
     item.deadline = moment(item.deadline).format(dateFormat);
   }
-  res.render("activity-list/edit", { ...item,item, sportTypes, areas  });
+  res.render("activity-list/edit", { ...item, item, sportTypes, areas });
 });
 //
 // ******************** API ****************************
@@ -377,8 +382,18 @@ router.post("/edit/:al_id", async (req, res) => {
     error: "",
   };
 
-  const { activity_name, sport_type_id, area_id, address, activity_time, deadline, payment, need_num, introduction } = req.body;
-  
+  const {
+    activity_name,
+    sport_type_id,
+    area_id,
+    address,
+    activity_time,
+    deadline,
+    payment,
+    need_num,
+    introduction,
+  } = req.body;
+
   const sql = `UPDATE activity_list SET 
     activity_name=?, 
     sport_type_id=?, 
@@ -396,13 +411,13 @@ router.post("/edit/:al_id", async (req, res) => {
       activity_name,
       sport_type_id,
       area_id,
-      address,  // << 確保 address 可以修改
+      address, // << 確保 address 可以修改
       activity_time,
       deadline,
       payment,
       need_num,
       introduction,
-      req.params.al_id
+      req.params.al_id,
     ]);
 
     output.success = !!result.affectedRows;
@@ -420,7 +435,17 @@ router.post("/api", upload.single("avatar"), async (req, res) => {
     bodyData: req.body,
     result: null,
   };
-  let { activity_name, sport_type_id, area_id, address, activity_time, deadline, payment, need_num, introduction } = req.body;
+  let {
+    activity_name,
+    sport_type_id,
+    area_id,
+    address,
+    activity_time,
+    deadline,
+    payment,
+    need_num,
+    introduction,
+  } = req.body;
   const zResult = abSchema.safeParse(req.body);
 
   // 如果資料驗證沒過
@@ -453,7 +478,17 @@ router.post("/api", upload.single("avatar"), async (req, res) => {
     }
   }
 
-  const dataObj = { activity_name, sport_type_id, area_id, address, activity_time, deadline, payment, need_num, introduction };
+  const dataObj = {
+    activity_name,
+    sport_type_id,
+    area_id,
+    address,
+    activity_time,
+    deadline,
+    payment,
+    need_num,
+    introduction,
+  };
   // 判斷有沒有上傳頭貼
   if (req.file && req.file.filename) {
     dataObj.avatar = req.file.filename;
@@ -479,8 +514,8 @@ router.post("/api", upload.single("avatar"), async (req, res) => {
 //
 //
 router.put("/api/:al_id", upload.single("avatar"), async (req, res) => {
-  console.log("收到的 req.body:", req.body);  // 確保 req.body 不是 undefined
-  console.log("收到的 activity_name:", req.body.activity_name);  // 確保 activity_name 有資料
+  console.log("收到的 req.body:", req.body); // 確保 req.body 不是 undefined
+  console.log("收到的 activity_name:", req.body.activity_name); // 確保 activity_name 有資料
 
   const output = {
     success: false,
@@ -500,7 +535,17 @@ router.put("/api/:al_id", upload.single("avatar"), async (req, res) => {
     return res.json(output);
   }
   // 表單資料
-  let { activity_name, sport_type_id, area_id, address, activity_time, deadline, payment, need_num, introduction } = req.body;
+  let {
+    activity_name,
+    sport_type_id,
+    area_id,
+    address,
+    activity_time,
+    deadline,
+    payment,
+    need_num,
+    introduction,
+  } = req.body;
 
   // 表單驗證
   const zResult = abSchema.safeParse(req.body);
@@ -534,7 +579,17 @@ router.put("/api/:al_id", upload.single("avatar"), async (req, res) => {
     }
   }
 
-  const dataObj = { activity_name, sport_type_id, area_id, address, activity_time, deadline, payment, need_num, introduction };
+  const dataObj = {
+    activity_name,
+    sport_type_id,
+    area_id,
+    address,
+    activity_time,
+    deadline,
+    payment,
+    need_num,
+    introduction,
+  };
   // 判斷有沒有上傳頭貼
   if (req.file && req.file.filename) {
     dataObj.avatar = req.file.filename;
@@ -559,8 +614,6 @@ router.put("/api/:al_id", upload.single("avatar"), async (req, res) => {
   }
 
   res.json(output);
-  
 });
-
 
 export default router;
