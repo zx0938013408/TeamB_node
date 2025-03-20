@@ -72,6 +72,10 @@ const getItemById = async (id) => {
       ? item.payment.toString()
       : item.payment.toFixed(2);
   }
+  //處理照片路徑
+  if (item.avatar) {
+    item.avatar = `${item.avatar}`;
+}
 
   output.data = item;
   output.success = true;
@@ -212,7 +216,8 @@ const getListData = async (req) => {
         introduction,
         members.name, 
         create_time,
-        update_time 
+        update_time,
+        avatar 
         FROM activity_list al
         JOIN sport_type ON sport_type_id = sport_type.id
         JOIN areas ON al.area_id = areas.area_id
@@ -239,6 +244,12 @@ const getListData = async (req) => {
         ? r.payment.toString()
         : r.payment.toFixed(2);
     }
+    rows.forEach((r) => {
+      if (r.avatar) {
+          r.avatar = `${r.avatar}`;
+      }
+  });
+  
   });
   //
   // 回傳結果
