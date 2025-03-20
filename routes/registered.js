@@ -124,8 +124,9 @@ router.post("/api", async (req, res) => {
   console.log("收到的 req.body:", req.body);
 
   const { member_id, activity_id, num, notes } = req.body;
+  const parsedNum = Number(num);
 
-  if (!member_id || !activity_id || !num) {
+  if (!member_id || !activity_id || isNaN(parsedNum)) {
     return res.status(400).json({ success: false, error: "缺少必要欄位" });
   }
 
