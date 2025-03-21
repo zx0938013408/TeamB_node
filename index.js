@@ -9,6 +9,7 @@ import upload from "./utils/upload-images.js";
 import admin2Router from "./routes/admin2.js";
 import abRouter from "./routes/activity-list.js";
 import registeredRouter from "./routes/registered.js";
+import ecpayRouter from "./routes/ecpay-test-only.js" 
 
 const MysqlStore = mysql_session(session);
 const sessionStore = new MysqlStore({}, db);
@@ -60,7 +61,7 @@ app.use((req, res, next) => {
 app.use("/admin2", admin2Router);
 app.use("/activity-list", abRouter);
 app.use("/registered", registeredRouter);
-
+app.use('/ecpay-test-only', ecpayRouter);  
 
 
 app.get("/", (req, res) => {
