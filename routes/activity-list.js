@@ -39,7 +39,7 @@ const getItemById = async (id) => {
     ci.name AS court_name,
     ci.address, 
     m.name AS name,
-      IFNULL(COUNT(r.id), 0) AS registered_people
+    IFNULL(SUM(r.num), 0) AS registered_people
     FROM activity_list al
     JOIN sport_type st ON al.sport_type_id = st.id
     JOIN areas a ON al.area_id = a.area_id
