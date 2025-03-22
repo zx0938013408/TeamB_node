@@ -17,13 +17,15 @@ const app = express();
 
 app.set("view engine", "ejs");
 
+// 設定提供圖片
+app.use("/imgs", express.static("public/imgs"));
 // 設定靜態內容資料夾
 app.use(express.static("public"));
 app.use("/bootstrap", express.static("node_modules/bootstrap/dist"));
 
 // **** top-level middlewares 頂層中介軟體 ****
-app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 const corsOptions = {
   credentials: true,
   origin: (origin, callback) => {
