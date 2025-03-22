@@ -38,13 +38,16 @@ const getItemById = async (id) => {
     a.name AS area_name, 
     ci.name AS court_name,
     ci.address, 
-    m.name AS name
+    m.name AS name,
+      IFNULL(COUNT(r.id), 0) AS registered_people
     FROM activity_list al
     JOIN sport_type st ON al.sport_type_id = st.id
     JOIN areas a ON al.area_id = a.area_id
     JOIN court_info ci ON al.court_id = ci.id
     JOIN members m ON al.founder_id = m.id
-    WHERE al.al_id = ?`;
+    LEFT JOIN registered r ON al.al_id = r.activity_id
+    WHERE al.al_id = ?
+    GROUP BY al.al_id`;
   const [rows] = await db.query(r_sql, [al_id]);
   if (!rows.length) {
     output.error = "沒有該筆資料";
