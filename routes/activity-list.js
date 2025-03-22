@@ -47,7 +47,13 @@ const getItemById = async (id) => {
     JOIN members m ON al.founder_id = m.id
     LEFT JOIN registered r ON al.al_id = r.activity_id
     WHERE al.al_id = ?
-    GROUP BY al.al_id`;
+    GROUP BY 
+      al.al_id,
+      st.sport_name,
+      a.name,
+      ci.name,
+      ci.address,
+      m.name`;
   const [rows] = await db.query(r_sql, [al_id]);
   if (!rows.length) {
     output.error = "沒有該筆資料";
