@@ -226,7 +226,22 @@ JOIN court_info ci ON al.court_id = ci.id
 JOIN members m ON al.founder_id = m.id
 LEFT JOIN registered r ON al.al_id = r.activity_id
 ${where}
-GROUP BY al.al_id
+GROUP BY 
+  al.al_id, 
+  al.activity_name, 
+  st.sport_name, 
+  a.name, 
+  ci.address,
+  ci.name,
+  al.activity_time, 
+  al.deadline, 
+  al.payment, 
+  al.need_num, 
+  al.introduction,
+  m.name, 
+  al.create_time,
+  al.update_time,
+  al.avatar
 ${orderBy}
 LIMIT ${(page - 1) * perPage}, ${perPage}`;
 
@@ -251,8 +266,8 @@ LIMIT ${(page - 1) * perPage}, ${perPage}`;
         : r.payment.toFixed(2);
     }
     rows.forEach((r) => {
-      if (r.avatar) {
-          r.avatar = `${r.avatar}`;
+      if (!r.avatar) {
+          r.avatar = `/TeamB-logo-greenYellow.png`;
       }
   });
   
