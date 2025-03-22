@@ -9,6 +9,7 @@ import upload from "./utils/upload-images.js";
 import admin2Router from "./routes/admin2.js";
 import abRouter from "./routes/activity-list.js";
 import registeredRouter from "./routes/registered.js";
+import memberActivitiesRouter from './routes/member-activities.js'; // 會員查詢已報名活動
 import cityRouter from "./routes/city.js"
 
 const MysqlStore = mysql_session(session);
@@ -61,8 +62,8 @@ app.use((req, res, next) => {
 app.use("/admin2", admin2Router);
 app.use("/activity-list", abRouter);
 app.use("/registered", registeredRouter);
+app.use('/members', memberActivitiesRouter); 
 app.use("/city-area", cityRouter);
-
 
 
 app.get("/", (req, res) => {
