@@ -1,14 +1,11 @@
--- 注意 1: members 原本的 "興趣" 欄位, 有使用正規化, 拉出去變成 member_sports 資料表
--- 注意 2: members 的住址全都以正規化方式呈現 對照表在 city 和 area 資料表
-
 -- phpMyAdmin SQL Dump
 -- version 5.2.1
 -- https://www.phpmyadmin.net/
 --
--- 主機： 127.0.0.1:3307
--- 產生時間： 2025-03-07 00:36:48
--- 伺服器版本： 8.0.40
--- PHP 版本： 8.2.12
+-- 主機： localhost
+-- 產生時間： 2025 年 03 月 21 日 02:43
+-- 伺服器版本： 10.4.28-MariaDB
+-- PHP 版本： 8.2.4
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -21,7 +18,7 @@ SET time_zone = "+00:00";
 /*!40101 SET NAMES utf8mb4 */;
 
 --
--- 資料庫： `mfee59_teamb_database`
+-- 資料庫： `MFEE59_TeamB_database`
 --
 
 -- --------------------------------------------------------
@@ -31,87 +28,90 @@ SET time_zone = "+00:00";
 --
 
 CREATE TABLE `activity_list` (
-  `id` int NOT NULL,
-  `activity_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `photo_url` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'https://example.com/photo.jpg',
-  `sport_type_id` int NOT NULL,
-  `area_id` int NOT NULL,
-  `court_id` int NOT NULL,
-  `activity_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `deadline` timestamp NOT NULL,
-  `payment` decimal(10,2) NOT NULL DEFAULT '0.00',
-  `need_num` int NOT NULL,
-  `introduction` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `founder_id` int NOT NULL,
-  `create_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `update_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  `al_id` int(11) NOT NULL,
+  `activity_name` varchar(100) NOT NULL,
+  `sport_type_id` int(11) NOT NULL,
+  `area_id` int(11) NOT NULL,
+  `court_id` int(11) NOT NULL,
+  `activity_time` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `deadline` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
+  `payment` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `need_num` int(11) NOT NULL,
+  `introduction` text NOT NULL,
+  `founder_id` int(11) NOT NULL,
+  `create_time` timestamp NOT NULL DEFAULT current_timestamp(),
+  `update_time` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `avatar` varchar(255) DEFAULT NULL,
+  `avatar2` varchar(255) DEFAULT NULL,
+  `avatar3` varchar(255) DEFAULT NULL,
+  `avatar4` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- 傾印資料表的資料 `activity_list`
 --
 
-INSERT INTO `activity_list` (`id`, `activity_name`, `photo_url`, `sport_type_id`, `area_id`, `court_id`, `activity_time`, `deadline`, `payment`, `need_num`, `introduction`, `founder_id`, `create_time`, `update_time`) VALUES
-(1, '排球活動93', 'https://example.com/photo.jpg', 2, 251, 15, '2025-06-16 17:11:00', '2025-05-30 16:04:00', 277.00, 21, '大家一起來運動，無論新手或高手，都歡迎參加！', 5, '2025-06-16 17:11:00', '2025-10-13 04:01:00'),
-(2, '羽球活動98', 'https://example.com/photo.jpg', 3, 229, 23, '2025-01-10 06:46:00', '2025-01-09 13:32:00', 343.00, 19, '大家一起來運動，無論新手或高手，都歡迎參加！', 4, '2025-01-10 06:46:00', '2025-06-05 07:34:00'),
-(3, '排球活動30', 'https://example.com/photo.jpg', 2, 221, 13, '2025-10-09 21:34:00', '2025-10-03 21:49:00', 402.00, 29, '大家一起來運動，無論新手或高手，都歡迎參加！', 3, '2025-10-09 21:34:00', '2025-11-27 00:15:00'),
-(4, '羽球活動23', 'https://example.com/photo.jpg', 3, 234, 19, '2025-04-02 08:43:00', '2025-01-31 02:06:00', 427.00, 20, '大家一起來運動，無論新手或高手，都歡迎參加！', 30, '2025-04-02 08:43:00', '2025-08-04 15:12:00'),
-(6, '羽球活動13', 'https://example.com/photo.jpg', 3, 217, 18, '2025-07-29 05:38:00', '2025-06-26 12:13:00', 454.00, 14, '大家一起來運動，無論新手或高手，都歡迎參加！', 4, '2025-07-29 05:38:00', '2025-12-17 20:22:00'),
-(7, '羽球活動96', 'https://example.com/photo.jpg', 3, 219, 17, '2025-05-31 08:09:00', '2025-04-25 23:01:00', 227.00, 5, '大家一起來運動，無論新手或高手，都歡迎參加！', 47, '2025-05-31 08:09:00', '2025-06-12 20:32:00'),
-(8, '羽球活動50', 'https://example.com/photo.jpg', 3, 216, 2, '2025-10-11 14:25:00', '2025-09-21 03:31:00', 370.00, 11, '大家一起來運動，無論新手或高手，都歡迎參加！', 41, '2025-10-11 14:25:00', '2025-12-07 08:02:00'),
-(9, '羽球活動95', 'https://example.com/photo.jpg', 3, 229, 23, '2025-12-27 17:29:00', '2025-10-28 15:51:00', 106.00, 21, '大家一起來運動，無論新手或高手，都歡迎參加！', 32, '2025-12-27 17:29:00', '2025-12-29 18:26:00'),
-(10, '排球活動49', 'https://example.com/photo.jpg', 2, 218, 7, '2025-02-08 12:05:00', '2025-02-06 06:28:00', 398.00, 7, '大家一起來運動，無論新手或高手，都歡迎參加！', 43, '2025-02-08 12:05:00', '2025-09-07 14:42:00'),
-(11, '排球活動33', 'https://example.com/photo.jpg', 2, 251, 15, '2025-12-14 23:27:00', '2025-11-18 21:22:00', 134.00, 8, '大家一起來運動，無論新手或高手，都歡迎參加！', 30, '2025-12-14 23:27:00', '2025-12-26 16:57:00'),
-(12, '羽球活動81', 'https://example.com/photo.jpg', 3, 217, 18, '2025-11-10 04:46:00', '2025-11-01 19:13:00', 144.00, 12, '大家一起來運動，無論新手或高手，都歡迎參加！', 49, '2025-11-10 04:46:00', '2025-11-19 04:55:00'),
-(13, '排球活動6', 'https://example.com/photo.jpg', 2, 229, 10, '2025-05-24 05:37:00', '2025-03-31 21:03:00', 270.00, 28, '大家一起來運動，無論新手或高手，都歡迎參加！', 28, '2025-05-24 05:37:00', '2025-11-12 02:05:00'),
-(14, '籃球活動98', 'https://example.com/photo.jpg', 1, 217, 2, '2025-11-17 00:00:00', '2025-03-15 00:00:00', 150.00, 23, '大家一起來運動，無論新手或高手，都歡迎參加！', 39, '2025-11-17 19:02:00', '2025-01-14 10:15:21'),
-(15, '籃球活動59', 'https://example.com/photo.jpg', 1, 222, 9, '2025-06-16 21:27:00', '2025-05-01 17:04:00', 386.00, 6, '大家一起來運動，無論新手或高手，都歡迎參加！', 7, '2025-06-16 21:27:00', '2025-09-30 08:14:00'),
-(16, '羽球活動84', 'https://example.com/photo.jpg', 3, 229, 23, '2025-04-29 07:48:00', '2025-04-13 04:11:00', 468.00, 17, '大家一起來運動，無論新手或高手，都歡迎參加！', 15, '2025-04-29 07:48:00', '2025-07-17 03:34:00'),
-(17, '羽球活動75', 'https://example.com/photo.jpg', 3, 251, 24, '2025-04-23 01:20:00', '2025-01-06 00:45:00', 489.00, 30, '大家一起來運動，無論新手或高手，都歡迎參加！', 29, '2025-04-23 01:20:00', '2025-05-31 05:56:00'),
-(18, '籃球活動11', 'https://example.com/photo.jpg', 1, 218, 1, '2025-05-01 09:04:00', '2025-03-04 10:47:00', 307.00, 16, '大家一起來運動，無論新手或高手，都歡迎參加！', 1, '2025-05-01 09:04:00', '2025-12-22 04:49:00'),
-(19, '籃球活動60', 'https://example.com/photo.jpg', 1, 229, 10, '2025-02-21 08:57:00', '2025-02-06 18:55:00', 457.00, 9, '大家一起來運動，無論新手或高手，都歡迎參加！', 16, '2025-02-21 08:57:00', '2025-08-18 18:27:00'),
-(20, '羽球活動28', 'https://example.com/photo.jpg', 3, 216, 2, '2025-09-13 11:22:00', '2025-09-02 20:11:00', 276.00, 25, '大家一起來運動，無論新手或高手，都歡迎參加！', 6, '2025-09-13 11:22:00', '2025-11-27 08:23:00'),
-(21, '籃球活動72', 'https://example.com/photo.jpg', 1, 240, 4, '2025-02-27 17:58:00', '2025-01-23 22:21:00', 291.00, 19, '大家一起來運動，無論新手或高手，都歡迎參加！', 47, '2025-02-27 17:58:00', '2025-11-17 19:26:00'),
-(22, '羽球活動26', 'https://example.com/photo.jpg', 3, 217, 22, '2025-01-26 03:49:00', '2025-01-07 11:28:00', 293.00, 15, '大家一起來運動，無論新手或高手，都歡迎參加！', 47, '2025-01-26 03:49:00', '2025-06-22 06:23:00'),
-(23, '籃球活動14', 'https://example.com/photo.jpg', 1, 222, 9, '2025-03-13 09:06:00', '2025-02-17 00:04:00', 387.00, 13, '大家一起來運動，無論新手或高手，都歡迎參加！', 40, '2025-03-13 09:06:00', '2025-08-21 18:34:00'),
-(24, '排球活動2', 'https://example.com/photo.jpg', 2, 243, 12, '2025-07-28 04:17:00', '2025-05-08 01:48:00', 129.00, 10, '大家一起來運動，無論新手或高手，都歡迎參加！', 31, '2025-07-28 04:17:00', '2025-12-08 04:00:00'),
-(25, '排球活動62', 'https://example.com/photo.jpg', 2, 222, 9, '2025-11-11 16:09:00', '2025-11-07 11:04:00', 311.00, 19, '大家一起來運動，無論新手或高手，都歡迎參加！', 40, '2025-11-11 16:09:00', '2025-12-10 14:37:00'),
-(26, '籃球活動37', 'https://example.com/photo.jpg', 1, 229, 10, '2025-06-11 13:00:00', '2025-02-06 07:05:00', 463.00, 23, '大家一起來運動，無論新手或高手，都歡迎參加！', 16, '2025-06-11 13:00:00', '2025-09-02 15:13:00'),
-(27, '排球活動15', 'https://example.com/photo.jpg', 2, 229, 10, '2025-01-21 10:32:00', '2025-01-02 14:09:00', 160.00, 10, '大家一起來運動，無論新手或高手，都歡迎參加！', 47, '2025-01-21 10:32:00', '2025-09-03 13:02:00'),
-(28, '排球活動82', 'https://example.com/photo.jpg', 2, 243, 12, '2025-10-11 09:51:00', '2025-09-12 12:59:00', 425.00, 16, '大家一起來運動，無論新手或高手，都歡迎參加！', 37, '2025-10-11 09:51:00', '2025-11-19 01:46:00'),
-(29, '羽球活動77', 'https://example.com/photo.jpg', 3, 229, 23, '2025-04-17 18:14:00', '2025-02-06 13:17:00', 163.00, 30, '大家一起來運動，無論新手或高手，都歡迎參加！', 16, '2025-04-17 18:14:00', '2025-05-22 15:50:00'),
-(30, '排球活動26', 'https://example.com/photo.jpg', 2, 251, 15, '2025-08-23 07:35:00', '2025-02-03 06:31:00', 221.00, 30, '大家一起來運動，無論新手或高手，都歡迎參加！', 17, '2025-08-23 07:35:00', '2025-09-19 08:38:00'),
-(31, '籃球活動1', 'https://example.com/photo.jpg', 1, 216, 2, '2025-03-20 08:24:00', '2025-02-14 21:06:00', 269.00, 18, '大家一起來運動，無論新手或高手，都歡迎參加！', 32, '2025-03-20 08:24:00', '2025-06-21 22:46:00'),
-(32, '排球活動99', 'https://example.com/photo.jpg', 2, 224, 5, '2025-10-19 14:43:00', '2025-01-17 09:39:00', 179.00, 22, '大家一起來運動，無論新手或高手，都歡迎參加！', 27, '2025-10-19 14:43:00', '2025-11-20 17:50:00'),
-(33, '籃球活動17', 'https://example.com/photo.jpg', 1, 229, 10, '2025-02-12 02:09:00', '2025-01-17 19:41:00', 408.00, 21, '大家一起來運動，無論新手或高手，都歡迎參加！', 29, '2025-02-12 02:09:00', '2025-08-06 20:42:00'),
-(34, '籃球活動24', 'https://example.com/photo.jpg', 1, 222, 9, '2025-02-08 22:08:00', '2025-02-06 10:05:00', 288.00, 11, '大家一起來運動，無論新手或高手，都歡迎參加！', 34, '2025-02-08 22:08:00', '2025-11-15 19:53:00'),
-(35, '排球活動80', 'https://example.com/photo.jpg', 2, 221, 13, '2025-10-27 21:18:00', '2025-03-16 04:34:00', 131.00, 23, '大家一起來運動，無論新手或高手，都歡迎參加！', 17, '2025-10-27 21:18:00', '2025-12-11 14:19:00'),
-(36, '羽球活動10', 'https://example.com/photo.jpg', 3, 251, 24, '2025-01-26 16:14:00', '2025-01-23 03:45:00', 346.00, 13, '大家一起來運動，無論新手或高手，都歡迎參加！', 11, '2025-01-26 16:14:00', '2025-12-09 00:17:00'),
-(37, '羽球活動86', 'https://example.com/photo.jpg', 3, 251, 24, '2025-05-16 08:36:00', '2025-03-25 18:41:00', 177.00, 28, '大家一起來運動，無論新手或高手，都歡迎參加！', 36, '2025-05-16 08:36:00', '2025-09-20 08:12:00'),
-(38, '籃球活動78', 'https://example.com/photo.jpg', 1, 222, 9, '2025-09-12 05:17:00', '2025-05-07 01:04:00', 242.00, 21, '大家一起來運動，無論新手或高手，都歡迎參加！', 38, '2025-09-12 05:17:00', '2025-10-18 06:07:00'),
-(39, '排球活動42', 'https://example.com/photo.jpg', 2, 223, 6, '2025-06-10 11:47:00', '2025-03-19 03:57:00', 135.00, 18, '大家一起來運動，無論新手或高手，都歡迎參加！', 49, '2025-06-10 11:47:00', '2025-09-09 13:47:00'),
-(40, '羽球活動47', 'https://example.com/photo.jpg', 3, 217, 18, '2025-05-11 06:51:00', '2025-03-01 19:15:00', 198.00, 26, '大家一起來運動，無論新手或高手，都歡迎參加！', 44, '2025-05-11 06:51:00', '2025-09-21 20:17:00'),
-(41, '羽球活動100', 'https://example.com/photo.jpg', 3, 229, 23, '2025-11-22 03:41:00', '2025-03-10 11:24:00', 135.00, 8, '大家一起來運動，無論新手或高手，都歡迎參加！', 26, '2025-11-22 03:41:00', '2025-12-26 21:00:00'),
-(42, '排球活動64', 'https://example.com/photo.jpg', 2, 221, 13, '2025-11-25 09:19:00', '2025-01-01 15:31:00', 468.00, 10, '大家一起來運動，無論新手或高手，都歡迎參加！', 23, '2025-11-25 09:19:00', '2025-12-20 07:36:00'),
-(43, '排球活動99', 'https://example.com/photo.jpg', 2, 223, 6, '2025-12-08 23:18:00', '2025-11-28 07:10:00', 164.00, 9, '大家一起來運動，無論新手或高手，都歡迎參加！', 28, '2025-12-08 23:18:00', '2025-12-30 19:43:00'),
-(44, '籃球活動64', 'https://example.com/photo.jpg', 1, 216, 2, '2025-05-21 17:39:00', '2025-03-06 02:48:00', 205.00, 9, '大家一起來運動，無論新手或高手，都歡迎參加！', 5, '2025-05-21 17:39:00', '2025-08-20 17:08:00'),
-(45, '籃球活動13', 'https://example.com/photo.jpg', 1, 218, 1, '2025-03-19 05:39:00', '2025-01-13 21:56:00', 367.00, 8, '大家一起來運動，無論新手或高手，都歡迎參加！', 33, '2025-03-19 05:39:00', '2025-12-22 03:58:00'),
-(46, '籃球活動92', 'https://example.com/photo.jpg', 1, 224, 5, '2025-12-09 22:31:00', '2025-05-25 04:07:00', 364.00, 19, '大家一起來運動，無論新手或高手，都歡迎參加！', 31, '2025-12-09 22:31:00', '2025-12-22 08:51:00'),
-(47, '排球活動60', 'https://example.com/photo.jpg', 2, 244, 11, '2025-02-16 04:50:00', '2025-01-01 10:17:00', 254.00, 18, '大家一起來運動，無論新手或高手，都歡迎參加！', 40, '2025-02-16 04:50:00', '2025-11-03 05:49:00'),
-(48, '籃球活動5', 'https://example.com/photo.jpg', 1, 223, 6, '2025-01-05 18:56:00', '2024-12-31 22:40:00', 146.00, 29, '大家一起來運動，無論新手或高手，都歡迎參加！', 14, '2025-01-05 18:56:00', '2025-01-06 21:20:00'),
-(49, '排球活動65', 'https://example.com/photo.jpg', 2, 222, 9, '2025-12-05 11:05:00', '2025-09-25 20:58:00', 127.00, 15, '大家一起來運動，無論新手或高手，都歡迎參加！', 5, '2025-12-05 11:05:00', '2025-12-05 20:00:00'),
-(50, '排球活動7', 'https://example.com/photo.jpg', 2, 218, 7, '2025-06-13 07:05:00', '2025-03-24 16:02:00', 340.00, 9, '大家一起來運動，無論新手或高手，都歡迎參加！', 13, '2025-06-13 07:05:00', '2025-06-20 03:44:00'),
-(51, '排球活動40', 'https://example.com/photo.jpg', 2, 224, 5, '2025-05-23 04:58:00', '2025-03-19 05:21:00', 353.00, 9, '大家一起來運動，無論新手或高手，都歡迎參加！', 28, '2025-05-23 04:58:00', '2025-10-02 02:20:00'),
-(52, '排球活動64', 'https://example.com/photo.jpg', 2, 243, 12, '2025-03-26 07:04:00', '2025-03-06 03:47:00', 392.00, 14, '大家一起來運動，無論新手或高手，都歡迎參加！', 44, '2025-03-26 07:04:00', '2025-06-07 12:44:00'),
-(53, '羽球活動64', 'https://example.com/photo.jpg', 3, 218, 16, '2025-11-24 11:53:00', '2025-06-12 00:24:00', 153.00, 28, '大家一起來運動，無論新手或高手，都歡迎參加！', 8, '2025-11-24 11:53:00', '2025-12-06 22:48:00'),
-(54, '籃球活動48', 'https://example.com/photo.jpg', 1, 222, 9, '2025-11-27 12:23:00', '2025-09-11 08:50:00', 447.00, 8, '大家一起來運動，無論新手或高手，都歡迎參加！', 10, '2025-11-27 12:23:00', '2025-11-30 16:27:00'),
-(55, '籃球活動83', 'https://example.com/photo.jpg', 1, 229, 10, '2025-02-27 16:16:00', '2025-01-13 08:35:00', 394.00, 30, '大家一起來運動，無論新手或高手，都歡迎參加！', 3, '2025-02-27 16:16:00', '2025-05-11 09:33:00'),
-(56, '籃球活動83', 'https://example.com/photo.jpg', 1, 216, 2, '2025-11-06 19:21:00', '2025-06-27 21:51:00', 303.00, 10, '大家一起來運動，無論新手或高手，都歡迎參加！', 30, '2025-11-06 19:21:00', '2025-12-28 10:56:00'),
-(57, '籃球活動30', 'https://example.com/photo.jpg', 1, 229, 10, '2025-08-30 10:33:00', '2025-07-04 21:04:00', 232.00, 22, '大家一起來運動，無論新手或高手，都歡迎參加！', 19, '2025-08-30 10:33:00', '2025-11-02 08:14:00'),
-(58, '羽球活動2', 'https://example.com/photo.jpg', 3, 216, 2, '2025-01-31 14:10:00', '2025-01-26 18:46:00', 463.00, 25, '大家一起來運動，無論新手或高手，都歡迎參加！', 19, '2025-01-31 14:10:00', '2025-09-29 21:54:00'),
-(59, '羽球活動1', 'https://example.com/photo.jpg', 3, 229, 23, '2025-07-30 14:36:00', '2025-02-26 17:16:00', 187.00, 25, '大家一起來運動，無論新手或高手，都歡迎參加！', 5, '2025-07-30 14:36:00', '2025-10-19 02:34:00'),
-(60, '羽球活動18', 'https://example.com/photo.jpg', 3, 251, 24, '2025-01-06 13:17:00', '2025-01-06 04:41:00', 168.00, 7, '大家一起來運動，無論新手或高手，都歡迎參加！', 34, '2025-01-06 13:17:00', '2025-10-02 09:29:00'),
-(61, 'asdas', 'https://example.com/photo.jpg', 2, 217, 12, '2025-01-14 14:38:00', '2025-01-14 14:38:00', 120.00, 1, 'asdsad', 2, '2025-01-14 14:39:18', '2025-01-14 14:39:18');
+INSERT INTO `activity_list` (`al_id`, `activity_name`, `sport_type_id`, `area_id`, `court_id`, `activity_time`, `deadline`, `payment`, `need_num`, `introduction`, `founder_id`, `create_time`, `update_time`, `avatar`, `avatar2`, `avatar3`, `avatar4`) VALUES
+(1, '排球活動93', 2, 251, 15, '2025-06-16 17:11:00', '2025-05-30 16:04:00', 277.00, 21, '大家一起來運動，無論新手或高手，都歡迎參加！', 5, '2025-06-16 17:11:00', '2025-10-13 04:01:00', NULL, NULL, NULL, NULL),
+(2, '羽球活動98', 3, 229, 23, '2025-01-10 06:46:00', '2025-01-09 13:32:00', 343.00, 19, '大家一起來運動，無論新手或高手，都歡迎參加！', 4, '2025-01-10 06:46:00', '2025-06-05 07:34:00', NULL, NULL, NULL, NULL),
+(3, '排球活動30', 2, 221, 13, '2025-10-09 21:34:00', '2025-10-03 21:49:00', 402.00, 29, '大家一起來運動，無論新手或高手，都歡迎參加！', 3, '2025-10-09 21:34:00', '2025-11-27 00:15:00', NULL, NULL, NULL, NULL),
+(4, '羽球活動23', 3, 234, 19, '2025-04-02 08:43:00', '2025-01-31 02:06:00', 427.00, 20, '大家一起來運動，無論新手或高手，都歡迎參加！', 30, '2025-04-02 08:43:00', '2025-08-04 15:12:00', NULL, NULL, NULL, NULL),
+(6, '羽球活動13', 3, 217, 18, '2025-07-29 05:38:00', '2025-06-26 12:13:00', 454.00, 14, '大家一起來運動，無論新手或高手，都歡迎參加！', 4, '2025-07-29 05:38:00', '2025-12-17 20:22:00', NULL, NULL, NULL, NULL),
+(7, '羽球活動96', 3, 219, 17, '2025-05-31 08:09:00', '2025-04-25 23:01:00', 227.00, 5, '大家一起來運動，無論新手或高手，都歡迎參加！', 47, '2025-05-31 08:09:00', '2025-06-12 20:32:00', NULL, NULL, NULL, NULL),
+(8, '羽球活動50', 3, 216, 2, '2025-10-11 14:25:00', '2025-09-21 03:31:00', 370.00, 11, '大家一起來運動，無論新手或高手，都歡迎參加！', 41, '2025-10-11 14:25:00', '2025-12-07 08:02:00', NULL, NULL, NULL, NULL),
+(9, '羽球活動95', 3, 229, 23, '2025-12-27 17:29:00', '2025-10-28 15:51:00', 106.00, 21, '大家一起來運動，無論新手或高手，都歡迎參加！', 32, '2025-12-27 17:29:00', '2025-12-29 18:26:00', NULL, NULL, NULL, NULL),
+(10, '排球活動49', 2, 218, 7, '2025-02-08 12:05:00', '2025-02-06 06:28:00', 398.00, 7, '大家一起來運動，無論新手或高手，都歡迎參加！', 43, '2025-02-08 12:05:00', '2025-09-07 14:42:00', NULL, NULL, NULL, NULL),
+(11, '排球活動33', 2, 251, 15, '2025-12-14 23:27:00', '2025-11-18 21:22:00', 134.00, 8, '大家一起來運動，無論新手或高手，都歡迎參加！', 30, '2025-12-14 23:27:00', '2025-12-26 16:57:00', NULL, NULL, NULL, NULL),
+(12, '羽球活動81', 3, 217, 18, '2025-11-10 04:46:00', '2025-11-01 19:13:00', 144.00, 12, '大家一起來運動，無論新手或高手，都歡迎參加！', 49, '2025-11-10 04:46:00', '2025-11-19 04:55:00', NULL, NULL, NULL, NULL),
+(13, '排球活動6', 2, 229, 10, '2025-05-24 05:37:00', '2025-03-31 21:03:00', 270.00, 28, '大家一起來運動，無論新手或高手，都歡迎參加！', 28, '2025-05-24 05:37:00', '2025-11-12 02:05:00', NULL, NULL, NULL, NULL),
+(14, '籃球活動98', 1, 217, 2, '2025-11-17 00:00:00', '2025-03-15 00:00:00', 150.00, 23, '大家一起來運動，無論新手或高手，都歡迎參加！', 39, '2025-11-17 19:02:00', '2025-01-14 10:15:21', NULL, NULL, NULL, NULL),
+(15, '籃球活動59', 1, 222, 9, '2025-06-16 21:27:00', '2025-05-01 17:04:00', 386.00, 6, '大家一起來運動，無論新手或高手，都歡迎參加！', 7, '2025-06-16 21:27:00', '2025-09-30 08:14:00', NULL, NULL, NULL, NULL),
+(16, '羽球活動84', 3, 229, 23, '2025-04-29 07:48:00', '2025-04-13 04:11:00', 468.00, 17, '大家一起來運動，無論新手或高手，都歡迎參加！', 15, '2025-04-29 07:48:00', '2025-07-17 03:34:00', NULL, NULL, NULL, NULL),
+(17, '羽球活動75', 3, 251, 24, '2025-04-23 01:20:00', '2025-01-06 00:45:00', 489.00, 30, '大家一起來運動，無論新手或高手，都歡迎參加！', 29, '2025-04-23 01:20:00', '2025-05-31 05:56:00', NULL, NULL, NULL, NULL),
+(18, '籃球活動11', 1, 218, 1, '2025-05-01 09:04:00', '2025-03-04 10:47:00', 307.00, 16, '大家一起來運動，無論新手或高手，都歡迎參加！', 1, '2025-05-01 09:04:00', '2025-12-22 04:49:00', NULL, NULL, NULL, NULL),
+(19, '籃球活動60', 1, 229, 10, '2025-02-21 08:57:00', '2025-02-06 18:55:00', 457.00, 9, '大家一起來運動，無論新手或高手，都歡迎參加！', 16, '2025-02-21 08:57:00', '2025-08-18 18:27:00', NULL, NULL, NULL, NULL),
+(20, '羽球活動28', 3, 216, 2, '2025-09-13 11:22:00', '2025-09-02 20:11:00', 276.00, 25, '大家一起來運動，無論新手或高手，都歡迎參加！', 6, '2025-09-13 11:22:00', '2025-11-27 08:23:00', NULL, NULL, NULL, NULL),
+(21, '籃球活動72', 1, 240, 4, '2025-02-27 17:58:00', '2025-01-23 22:21:00', 291.00, 19, '大家一起來運動，無論新手或高手，都歡迎參加！', 47, '2025-02-27 17:58:00', '2025-11-17 19:26:00', NULL, NULL, NULL, NULL),
+(22, '羽球活動26', 3, 217, 22, '2025-01-26 03:49:00', '2025-01-07 11:28:00', 293.00, 15, '大家一起來運動，無論新手或高手，都歡迎參加！', 47, '2025-01-26 03:49:00', '2025-06-22 06:23:00', NULL, NULL, NULL, NULL),
+(23, '籃球活動14', 1, 222, 9, '2025-03-13 09:06:00', '2025-02-17 00:04:00', 387.00, 13, '大家一起來運動，無論新手或高手，都歡迎參加！', 40, '2025-03-13 09:06:00', '2025-08-21 18:34:00', NULL, NULL, NULL, NULL),
+(24, '排球活動2', 2, 243, 12, '2025-07-28 04:17:00', '2025-05-08 01:48:00', 129.00, 10, '大家一起來運動，無論新手或高手，都歡迎參加！', 31, '2025-07-28 04:17:00', '2025-12-08 04:00:00', NULL, NULL, NULL, NULL),
+(25, '排球活動62', 2, 222, 9, '2025-11-11 16:09:00', '2025-11-07 11:04:00', 311.00, 19, '大家一起來運動，無論新手或高手，都歡迎參加！', 40, '2025-11-11 16:09:00', '2025-12-10 14:37:00', NULL, NULL, NULL, NULL),
+(26, '籃球活動37', 1, 229, 10, '2025-06-11 13:00:00', '2025-02-06 07:05:00', 463.00, 23, '大家一起來運動，無論新手或高手，都歡迎參加！', 16, '2025-06-11 13:00:00', '2025-09-02 15:13:00', NULL, NULL, NULL, NULL),
+(27, '排球活動15', 2, 229, 10, '2025-01-21 10:32:00', '2025-01-02 14:09:00', 160.00, 10, '大家一起來運動，無論新手或高手，都歡迎參加！', 47, '2025-01-21 10:32:00', '2025-09-03 13:02:00', NULL, NULL, NULL, NULL),
+(28, '排球活動82', 2, 243, 12, '2025-10-11 09:51:00', '2025-09-12 12:59:00', 425.00, 16, '大家一起來運動，無論新手或高手，都歡迎參加！', 37, '2025-10-11 09:51:00', '2025-11-19 01:46:00', NULL, NULL, NULL, NULL),
+(29, '羽球活動77', 3, 229, 23, '2025-04-17 18:14:00', '2025-02-06 13:17:00', 163.00, 30, '大家一起來運動，無論新手或高手，都歡迎參加！', 16, '2025-04-17 18:14:00', '2025-05-22 15:50:00', NULL, NULL, NULL, NULL),
+(30, '排球活動26', 2, 251, 15, '2025-08-23 07:35:00', '2025-02-03 06:31:00', 221.00, 30, '大家一起來運動，無論新手或高手，都歡迎參加！', 17, '2025-08-23 07:35:00', '2025-09-19 08:38:00', NULL, NULL, NULL, NULL),
+(31, '籃球活動1', 1, 216, 2, '2025-03-20 08:24:00', '2025-02-14 21:06:00', 269.00, 18, '大家一起來運動，無論新手或高手，都歡迎參加！', 32, '2025-03-20 08:24:00', '2025-06-21 22:46:00', NULL, NULL, NULL, NULL),
+(32, '排球活動99', 2, 224, 5, '2025-10-19 14:43:00', '2025-01-17 09:39:00', 179.00, 22, '大家一起來運動，無論新手或高手，都歡迎參加！', 27, '2025-10-19 14:43:00', '2025-11-20 17:50:00', NULL, NULL, NULL, NULL),
+(33, '籃球活動17', 1, 229, 10, '2025-02-12 02:09:00', '2025-01-17 19:41:00', 408.00, 21, '大家一起來運動，無論新手或高手，都歡迎參加！', 29, '2025-02-12 02:09:00', '2025-08-06 20:42:00', NULL, NULL, NULL, NULL),
+(34, '籃球活動24', 1, 222, 9, '2025-02-08 22:08:00', '2025-02-06 10:05:00', 288.00, 11, '大家一起來運動，無論新手或高手，都歡迎參加！', 34, '2025-02-08 22:08:00', '2025-11-15 19:53:00', NULL, NULL, NULL, NULL),
+(35, '排球活動80', 2, 221, 13, '2025-10-27 21:18:00', '2025-03-16 04:34:00', 131.00, 23, '大家一起來運動，無論新手或高手，都歡迎參加！', 17, '2025-10-27 21:18:00', '2025-12-11 14:19:00', NULL, NULL, NULL, NULL),
+(36, '羽球活動10', 3, 251, 24, '2025-01-26 16:14:00', '2025-01-23 03:45:00', 346.00, 13, '大家一起來運動，無論新手或高手，都歡迎參加！', 11, '2025-01-26 16:14:00', '2025-12-09 00:17:00', NULL, NULL, NULL, NULL),
+(37, '羽球活動86', 3, 251, 24, '2025-05-16 08:36:00', '2025-03-25 18:41:00', 177.00, 28, '大家一起來運動，無論新手或高手，都歡迎參加！', 36, '2025-05-16 08:36:00', '2025-09-20 08:12:00', NULL, NULL, NULL, NULL),
+(38, '籃球活動78', 1, 222, 9, '2025-09-12 05:17:00', '2025-05-07 01:04:00', 242.00, 21, '大家一起來運動，無論新手或高手，都歡迎參加！', 38, '2025-09-12 05:17:00', '2025-10-18 06:07:00', NULL, NULL, NULL, NULL),
+(39, '排球活動42', 2, 223, 6, '2025-06-10 11:47:00', '2025-03-19 03:57:00', 135.00, 18, '大家一起來運動，無論新手或高手，都歡迎參加！', 49, '2025-06-10 11:47:00', '2025-09-09 13:47:00', NULL, NULL, NULL, NULL),
+(40, '羽球活動47', 3, 217, 18, '2025-05-11 06:51:00', '2025-03-01 19:15:00', 198.00, 26, '大家一起來運動，無論新手或高手，都歡迎參加！', 44, '2025-05-11 06:51:00', '2025-09-21 20:17:00', NULL, NULL, NULL, NULL),
+(41, '羽球活動100', 3, 229, 23, '2025-11-22 03:41:00', '2025-03-10 11:24:00', 135.00, 8, '大家一起來運動，無論新手或高手，都歡迎參加！', 26, '2025-11-22 03:41:00', '2025-12-26 21:00:00', NULL, NULL, NULL, NULL),
+(42, '排球活動64', 2, 221, 13, '2025-11-25 09:19:00', '2025-01-01 15:31:00', 468.00, 10, '大家一起來運動，無論新手或高手，都歡迎參加！', 23, '2025-11-25 09:19:00', '2025-12-20 07:36:00', NULL, NULL, NULL, NULL),
+(43, '排球活動99', 2, 223, 6, '2025-12-08 23:18:00', '2025-11-28 07:10:00', 164.00, 9, '大家一起來運動，無論新手或高手，都歡迎參加！', 28, '2025-12-08 23:18:00', '2025-12-30 19:43:00', NULL, NULL, NULL, NULL),
+(44, '籃球活動64', 1, 216, 2, '2025-05-21 17:39:00', '2025-03-06 02:48:00', 205.00, 9, '大家一起來運動，無論新手或高手，都歡迎參加！', 5, '2025-05-21 17:39:00', '2025-08-20 17:08:00', NULL, NULL, NULL, NULL),
+(45, '籃球活動13', 1, 218, 1, '2025-03-19 05:39:00', '2025-01-13 21:56:00', 367.00, 8, '大家一起來運動，無論新手或高手，都歡迎參加！', 33, '2025-03-19 05:39:00', '2025-12-22 03:58:00', NULL, NULL, NULL, NULL),
+(46, '籃球活動92', 1, 224, 5, '2025-12-09 22:31:00', '2025-05-25 04:07:00', 364.00, 19, '大家一起來運動，無論新手或高手，都歡迎參加！', 31, '2025-12-09 22:31:00', '2025-12-22 08:51:00', NULL, NULL, NULL, NULL),
+(47, '排球活動60', 2, 244, 11, '2025-02-16 04:50:00', '2025-01-01 10:17:00', 254.00, 18, '大家一起來運動，無論新手或高手，都歡迎參加！', 40, '2025-02-16 04:50:00', '2025-11-03 05:49:00', NULL, NULL, NULL, NULL),
+(48, '籃球活動5', 1, 223, 6, '2025-01-05 18:56:00', '2024-12-31 22:40:00', 146.00, 29, '大家一起來運動，無論新手或高手，都歡迎參加！', 14, '2025-01-05 18:56:00', '2025-01-06 21:20:00', NULL, NULL, NULL, NULL),
+(49, '排球活動65', 2, 222, 9, '2025-12-05 11:05:00', '2025-09-25 20:58:00', 127.00, 15, '大家一起來運動，無論新手或高手，都歡迎參加！', 5, '2025-12-05 11:05:00', '2025-12-05 20:00:00', NULL, NULL, NULL, NULL),
+(50, '排球活動7', 2, 218, 7, '2025-06-13 07:05:00', '2025-03-24 16:02:00', 340.00, 9, '大家一起來運動，無論新手或高手，都歡迎參加！', 13, '2025-06-13 07:05:00', '2025-06-20 03:44:00', NULL, NULL, NULL, NULL),
+(51, '排球活動40', 2, 224, 5, '2025-05-23 04:58:00', '2025-03-19 05:21:00', 353.00, 9, '大家一起來運動，無論新手或高手，都歡迎參加！', 28, '2025-05-23 04:58:00', '2025-10-02 02:20:00', NULL, NULL, NULL, NULL),
+(52, '排球活動64', 2, 243, 12, '2025-03-26 07:04:00', '2025-03-06 03:47:00', 392.00, 14, '大家一起來運動，無論新手或高手，都歡迎參加！', 44, '2025-03-26 07:04:00', '2025-06-07 12:44:00', NULL, NULL, NULL, NULL),
+(53, '羽球活動64', 3, 218, 16, '2025-11-24 11:53:00', '2025-06-12 00:24:00', 153.00, 28, '大家一起來運動，無論新手或高手，都歡迎參加！', 8, '2025-11-24 11:53:00', '2025-12-06 22:48:00', NULL, NULL, NULL, NULL),
+(54, '籃球活動48', 1, 222, 9, '2025-11-27 12:23:00', '2025-09-11 08:50:00', 447.00, 8, '大家一起來運動，無論新手或高手，都歡迎參加！', 10, '2025-11-27 12:23:00', '2025-11-30 16:27:00', NULL, NULL, NULL, NULL),
+(55, '籃球活動83', 1, 229, 10, '2025-02-27 16:16:00', '2025-01-13 08:35:00', 394.00, 30, '大家一起來運動，無論新手或高手，都歡迎參加！', 3, '2025-02-27 16:16:00', '2025-05-11 09:33:00', NULL, NULL, NULL, NULL),
+(56, '籃球活動83', 1, 216, 2, '2025-11-06 19:21:00', '2025-06-27 21:51:00', 303.00, 10, '大家一起來運動，無論新手或高手，都歡迎參加！', 30, '2025-11-06 19:21:00', '2025-12-28 10:56:00', NULL, NULL, NULL, NULL),
+(57, '籃球活動30', 1, 229, 10, '2025-08-30 10:33:00', '2025-07-04 21:04:00', 232.00, 22, '大家一起來運動，無論新手或高手，都歡迎參加！', 19, '2025-08-30 10:33:00', '2025-11-02 08:14:00', NULL, NULL, NULL, NULL),
+(58, '羽球活動2', 3, 216, 2, '2025-01-31 14:10:00', '2025-01-26 18:46:00', 463.00, 25, '大家一起來運動，無論新手或高手，都歡迎參加！', 19, '2025-01-31 14:10:00', '2025-09-29 21:54:00', NULL, NULL, NULL, NULL),
+(59, '羽球活動1', 3, 229, 23, '2025-07-30 14:36:00', '2025-02-26 17:16:00', 187.00, 25, '大家一起來運動，無論新手或高手，都歡迎參加！', 5, '2025-07-30 14:36:00', '2025-10-19 02:34:00', NULL, NULL, NULL, NULL),
+(60, '羽球活動18', 3, 251, 24, '2025-01-06 13:17:00', '2025-01-06 04:41:00', 168.00, 7, '大家一起來運動，無論新手或高手，都歡迎參加！', 34, '2025-01-06 13:17:00', '2025-10-02 09:29:00', NULL, NULL, NULL, NULL),
+(61, '馬的好累快來打球', 2, 217, 12, '2025-03-20 14:41:09', '2025-01-14 14:38:00', 120.00, 1, '有空再幫排個版', 2, '2025-01-14 14:39:18', '2025-03-20 14:41:09', '/activity-volleyballCourt.jpg', '/slogan_volleyball.png', '/volleyball3.jpg', '/IMG_5698.jpeg');
 
 -- --------------------------------------------------------
 
@@ -120,11 +120,11 @@ INSERT INTO `activity_list` (`id`, `activity_name`, `photo_url`, `sport_type_id`
 --
 
 CREATE TABLE `admins` (
-  `id` int NOT NULL,
-  `name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `phone` varchar(15) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `email` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `password` varchar(8) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL
+  `id` int(11) NOT NULL,
+  `name` varchar(100) NOT NULL,
+  `phone` varchar(15) NOT NULL,
+  `email` varchar(100) NOT NULL,
+  `password` varchar(255) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
@@ -142,7 +142,7 @@ INSERT INTO `admins` (`id`, `name`, `phone`, `email`, `password`) VALUES
 (8, '劉俊傑', '0989012345', 'junjie.liu@example.com', '291413'),
 (9, '楊采薇', '0990123456', 'caiwei.yang@example.com', '841274'),
 (10, '何冠中', '0901234567', 'guanzhong.he@example.com', '361489'),
-(11, '帥哥', '0972091027', 'zx0938013408@gmail.com', '123456');
+(11, '帥哥', '0972091027', 'zx0938013408@gmail.com', '$2b$10$nHhquYIDY9JIvJRqhh4EaO52jQ2WmUOM55ii2WlVVLj4g9qQ5U5ae');
 
 -- --------------------------------------------------------
 
@@ -151,11 +151,11 @@ INSERT INTO `admins` (`id`, `name`, `phone`, `email`, `password`) VALUES
 --
 
 CREATE TABLE `admin_login_logs` (
-  `id` int NOT NULL,
-  `adminer_id` int DEFAULT NULL,
-  `login_time` datetime DEFAULT CURRENT_TIMESTAMP,
-  `ip_address` varchar(45) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `update_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  `id` int(11) NOT NULL,
+  `adminer_id` int(11) DEFAULT NULL,
+  `login_time` datetime DEFAULT current_timestamp(),
+  `ip_address` varchar(45) DEFAULT NULL,
+  `update_at` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -190,9 +190,9 @@ INSERT INTO `admin_login_logs` (`id`, `adminer_id`, `login_time`, `ip_address`, 
 --
 
 CREATE TABLE `areas` (
-  `area_id` int NOT NULL,
-  `name` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `city_id` int DEFAULT NULL
+  `area_id` int(11) NOT NULL,
+  `name` varchar(10) NOT NULL,
+  `city_id` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -577,8 +577,8 @@ INSERT INTO `areas` (`area_id`, `name`, `city_id`) VALUES
 --
 
 CREATE TABLE `categories` (
-  `id` int NOT NULL,
-  `categories_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL
+  `id` int(11) NOT NULL,
+  `categories_name` varchar(50) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -598,8 +598,8 @@ INSERT INTO `categories` (`id`, `categories_name`) VALUES
 --
 
 CREATE TABLE `citys` (
-  `city_id` int NOT NULL,
-  `city_name` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL
+  `city_id` int(11) NOT NULL,
+  `city_name` varchar(10) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -637,11 +637,11 @@ INSERT INTO `citys` (`city_id`, `city_name`) VALUES
 --
 
 CREATE TABLE `court_info` (
-  `id` int NOT NULL,
-  `name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `area_id` int DEFAULT NULL,
-  `address` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `type_id` int DEFAULT NULL,
+  `id` int(11) NOT NULL,
+  `name` varchar(200) DEFAULT NULL,
+  `area_id` int(11) DEFAULT NULL,
+  `address` varchar(200) DEFAULT NULL,
+  `type_id` int(11) DEFAULT NULL,
   `is_paid` tinyint(1) DEFAULT NULL,
   `is_reserve` tinyint(1) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -683,8 +683,8 @@ INSERT INTO `court_info` (`id`, `name`, `area_id`, `address`, `type_id`, `is_pai
 --
 
 CREATE TABLE `court_sports` (
-  `sport_id` int DEFAULT NULL,
-  `court_id` int DEFAULT NULL
+  `sport_id` int(11) DEFAULT NULL,
+  `court_id` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -762,8 +762,8 @@ INSERT INTO `court_sports` (`sport_id`, `court_id`) VALUES
 --
 
 CREATE TABLE `court_type` (
-  `id` int NOT NULL,
-  `court_type` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL
+  `id` int(11) NOT NULL,
+  `court_type` varchar(10) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -783,19 +783,19 @@ INSERT INTO `court_type` (`id`, `court_type`) VALUES
 --
 
 CREATE TABLE `members` (
-  `id` int NOT NULL,
-  `name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `gender` enum('男','女','其他') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `id` int(11) NOT NULL,
+  `name` varchar(50) NOT NULL,
+  `gender` enum('男','女','其他') NOT NULL,
   `birthday_date` date NOT NULL,
-  `city_id` int NOT NULL,
-  `area_id` int NOT NULL,
-  `address` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `phone` varchar(15) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `email` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `password` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `photo_url` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL
+  `city_id` int(11) NOT NULL,
+  `area_id` int(11) NOT NULL,
+  `address` varchar(255) NOT NULL,
+  `phone` varchar(15) NOT NULL,
+  `email` varchar(100) NOT NULL,
+  `password` varchar(50) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `photo_url` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -865,8 +865,8 @@ INSERT INTO `members` (`id`, `name`, `gender`, `birthday_date`, `city_id`, `area
 --
 
 CREATE TABLE `member_sports` (
-  `member_id` int DEFAULT NULL,
-  `sport_id` int DEFAULT NULL
+  `member_id` int(11) DEFAULT NULL,
+  `sport_id` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -1080,12 +1080,12 @@ INSERT INTO `member_sports` (`member_id`, `sport_id`) VALUES
 --
 
 CREATE TABLE `orders` (
-  `Order_id` int NOT NULL,
-  `MemberID` int NOT NULL,
-  `PaymentStatus` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `OrderStatus` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `TotalPrice` int DEFAULT NULL,
-  `OrderDate` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP
+  `Order_id` int(11) NOT NULL,
+  `MemberID` int(11) NOT NULL,
+  `PaymentStatus` varchar(20) NOT NULL,
+  `OrderStatus` varchar(20) NOT NULL,
+  `TotalPrice` int(11) DEFAULT NULL,
+  `OrderDate` datetime NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -1126,11 +1126,11 @@ INSERT INTO `orders` (`Order_id`, `MemberID`, `PaymentStatus`, `OrderStatus`, `T
 --
 
 CREATE TABLE `order_items` (
-  `id` int NOT NULL,
-  `order_id` int NOT NULL,
-  `item_id` int NOT NULL,
-  `quantity` int NOT NULL,
-  `price` int NOT NULL
+  `id` int(11) NOT NULL,
+  `order_id` int(11) NOT NULL,
+  `item_id` int(11) NOT NULL,
+  `quantity` int(11) NOT NULL,
+  `price` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -1212,17 +1212,17 @@ INSERT INTO `order_items` (`id`, `order_id`, `item_id`, `quantity`, `price`) VAL
 --
 
 CREATE TABLE `products` (
-  `id` int NOT NULL,
-  `image` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
-  `product_code` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `product_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `category_id` int NOT NULL,
-  `product_description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
-  `price` int NOT NULL,
-  `size` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `color` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `inventory` int NOT NULL,
-  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP
+  `id` int(11) NOT NULL,
+  `image` longtext DEFAULT NULL,
+  `product_code` varchar(20) NOT NULL,
+  `product_name` varchar(100) NOT NULL,
+  `category_id` int(11) NOT NULL,
+  `product_description` text DEFAULT NULL,
+  `price` int(11) NOT NULL,
+  `size` varchar(50) NOT NULL,
+  `color` varchar(50) NOT NULL,
+  `inventory` int(11) NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -1290,12 +1290,12 @@ INSERT INTO `products` (`id`, `image`, `product_code`, `product_name`, `category
 --
 
 CREATE TABLE `registered` (
-  `id` int NOT NULL,
-  `member_id` int NOT NULL,
-  `activity_id` int NOT NULL,
+  `id` int(11) NOT NULL,
+  `member_id` int(11) NOT NULL,
+  `activity_id` int(11) NOT NULL,
   `num` decimal(10,0) NOT NULL,
-  `notes` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `registered_time` datetime DEFAULT CURRENT_TIMESTAMP
+  `notes` varchar(200) DEFAULT NULL,
+  `registered_time` datetime DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -1504,12 +1504,24 @@ INSERT INTO `registered` (`id`, `member_id`, `activity_id`, `num`, `notes`, `reg
 -- --------------------------------------------------------
 
 --
+-- 資料表結構 `sessions`
+--
+
+CREATE TABLE `sessions` (
+  `session_id` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+  `expires` int(11) UNSIGNED NOT NULL,
+  `data` mediumtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
 -- 資料表結構 `sport_type`
 --
 
 CREATE TABLE `sport_type` (
-  `id` int NOT NULL,
-  `sport_name` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL
+  `id` int(11) NOT NULL,
+  `sport_name` varchar(10) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -1529,7 +1541,7 @@ INSERT INTO `sport_type` (`id`, `sport_name`) VALUES
 -- 資料表索引 `activity_list`
 --
 ALTER TABLE `activity_list`
-  ADD PRIMARY KEY (`id`),
+  ADD PRIMARY KEY (`al_id`),
   ADD KEY `sport_type_id` (`sport_type_id`),
   ADD KEY `area_id` (`area_id`),
   ADD KEY `court_id` (`court_id`),
@@ -1634,6 +1646,12 @@ ALTER TABLE `registered`
   ADD PRIMARY KEY (`id`),
   ADD KEY `member_id` (`member_id`),
   ADD KEY `activity_id` (`activity_id`);
+
+--
+-- 資料表索引 `sessions`
+--
+ALTER TABLE `sessions`
+  ADD PRIMARY KEY (`session_id`);
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
