@@ -38,13 +38,22 @@ const getItemById = async (id) => {
     a.name AS area_name, 
     ci.name AS court_name,
     ci.address, 
-    m.name AS name
+    m.name AS name,
+    IFNULL(SUM(r.num), 0) AS registered_people
     FROM activity_list al
     JOIN sport_type st ON al.sport_type_id = st.id
     JOIN areas a ON al.area_id = a.area_id
     JOIN court_info ci ON al.court_id = ci.id
     JOIN members m ON al.founder_id = m.id
-    WHERE al.al_id = ?`;
+    LEFT JOIN registered r ON al.al_id = r.activity_id
+    WHERE al.al_id = ?
+    GROUP BY 
+      al.al_id,
+      st.sport_name,
+      a.name,
+      ci.name,
+      ci.address,
+      m.name`;
   const [rows] = await db.query(r_sql, [al_id]);
   if (!rows.length) {
     output.error = "沒有該筆資料";
@@ -203,27 +212,48 @@ const getListData = async (req) => {
   //
   // 查詢資料 (依各自資料庫資料顯示需求更改下列)
   const sql = `SELECT 
-        al_id, 
-        activity_name, 
-        sport_name, 
-        areas.name AS area_name, 
-        court_info.address,
-        court_info.name court_name,
-        activity_time, 
-        deadline, 
-        payment, 
-        need_num, 
-        introduction,
-        members.name, 
-        create_time,
-        update_time,
-        avatar 
-        FROM activity_list al
-        JOIN sport_type ON sport_type_id = sport_type.id
-        JOIN areas ON al.area_id = areas.area_id
-        JOIN court_info ON court_id = court_info.id
-        JOIN members ON founder_id = members.id
-        ${where} ${orderBy} LIMIT ${(page - 1) * perPage}, ${perPage}`;
+  al.al_id, 
+  al.activity_name, 
+  st.sport_name, 
+  a.name AS area_name, 
+  ci.address,
+  ci.name AS court_name,
+  al.activity_time, 
+  al.deadline, 
+  al.payment, 
+  al.need_num, 
+  al.introduction,
+  m.name, 
+  al.create_time,
+  al.update_time,
+  al.avatar,
+IFNULL(SUM(r.num), 0) AS registered_people
+FROM activity_list al
+JOIN sport_type st ON al.sport_type_id = st.id
+JOIN areas a ON al.area_id = a.area_id
+JOIN court_info ci ON al.court_id = ci.id
+JOIN members m ON al.founder_id = m.id
+LEFT JOIN registered r ON al.al_id = r.activity_id
+${where}
+GROUP BY 
+  al.al_id, 
+  al.activity_name, 
+  st.sport_name, 
+  a.name, 
+  ci.address,
+  ci.name,
+  al.activity_time, 
+  al.deadline, 
+  al.payment, 
+  al.need_num, 
+  al.introduction,
+  m.name, 
+  al.create_time,
+  al.update_time,
+  al.avatar
+${orderBy}
+LIMIT ${(page - 1) * perPage}, ${perPage}`;
+
   [rows] = await db.query(sql);
   //
   // 格式化活動日期(各自資料庫有時間設定的需求改寫下列)
@@ -245,8 +275,8 @@ const getListData = async (req) => {
         : r.payment.toFixed(2);
     }
     rows.forEach((r) => {
-      if (r.avatar) {
-          r.avatar = `${r.avatar}`;
+      if (!r.avatar) {
+          r.avatar = `/TeamB-logo-greenYellow.png`;
       }
   });
   

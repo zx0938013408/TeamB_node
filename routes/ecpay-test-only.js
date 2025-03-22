@@ -145,7 +145,6 @@ router.get('/', function (req, res) {
   // 六、製作送出畫面
   //
   // # region --- 純後端送出form的作法，可以進行簡單的測試用  ---
-  //
   // const inputs = Object.entries(AllParams)
   //   .map(function (param) {
   //     return `<input name=${
