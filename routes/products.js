@@ -7,16 +7,17 @@ import upload from "../utils/upload-images.js";
 const pdRouter = express.Router();
 
 // *** 刪除沒用到的已上傳的圖檔
-// const removeUploadedImg = async (file) => {
-//   const filePath = `public/imgs/${file}`;
-//   try {
-//     await fs.unlink(filePath);
-//     return true;
-//   } catch (ex) {
-//     console.log("removeUploadedImg: ", ex);
-//   }
-//   return false;
-// };
+const removeUploadedImg = async (file) => {
+  if (!file) return false;
+  const filePath = `public/imgs/${file}`;
+  try {
+    await fs.unlink(filePath);
+    return true;
+  } catch (ex) {
+    console.log("removeUploadedImg 錯誤: ", ex);
+    return false;
+  }
+};
 
 // 取得單筆商品資訊
 const getItemById = async (id) => {
@@ -50,15 +51,17 @@ const getItemById = async (id) => {
   return output;
 };
 
+/*
 //驗證表單結構（未修改）
-// const abSchema = z.object({
-//   product_name: z
-//     .string({ message: "活動欄為必填" })
-//     .min(1, { message: "活動名稱最少三個字" }),
-//   // email: z
-//   //   .string({ message: "電子郵箱欄為必填" })
-//   //   .email({ message: "請填寫正確的電子郵箱" })
-// });
+const abSchema = z.object({
+  product_name: z
+    .string({ message: "活動欄為必填" })
+    .min(1, { message: "活動名稱最少三個字" }),
+  // email: z
+  //   .string({ message: "電子郵箱欄為必填" })
+  //   .email({ message: "請填寫正確的電子郵箱" })
+});
+*/
 
 //取得商品清單
 const getListData = async (req) => {
@@ -161,51 +164,53 @@ pdRouter.use((req, res, next) => {
   next();
 });
 
+/*
 //前端頁面（更改自己的前端頁面檔名）
-// pdRouter.get("/", async (req, res) => {
-//   res.locals.title = "商品列表 - " + res.locals.title;
-//   res.locals.pageName = "pd-list";
+pdRouter.get("/", async (req, res) => {
+  res.locals.title = "商品列表 - " + res.locals.title;
+  res.locals.pageName = "pd-list";
 
-//   const data = await getListData(req);
-//   if (data.redirect) {
-//     // 如果有指示要跳轉, 就跳轉到指示的 URL
-//     return res.redirect(data.redirect);
-//   }
-//   if (data.rows.length) {
-//     if (req.session.admin) {
-//       res.render("products/list", data);
-//     } else {
-//       res.render("products/list-no-admin", data);
-//     }
-//   } else {
-//     res.render("products/list-no-data", data);
-//   }
-//   // 確保 sportTypes 傳入 EJS
-//   res.render("products/list", { ...data });
-// });
+  const data = await getListData(req);
+  if (data.redirect) {
+    // 如果有指示要跳轉, 就跳轉到指示的 URL
+    return res.redirect(data.redirect);
+  }
+  if (data.rows.length) {
+    if (req.session.admin) {
+      res.render("products/list", data);
+    } else {
+      res.render("products/list-no-admin", data);
+    }
+  } else {
+    res.render("products/list-no-data", data);
+  }
+  // 確保 sportTypes 傳入 EJS
+  res.render("products/list", { ...data });
+});
 
-// pdRouter.get("/add", async (req, res) => {
-//   res.locals.title = "新增商品 - " + res.locals.title;
-//   res.locals.pageName = "pd-add";
-//   res.render("products/add");
-// });
+pdRouter.get("/add", async (req, res) => {
+  res.locals.title = "新增商品 - " + res.locals.title;
+  res.locals.pageName = "pd-add";
+  res.render("products/add");
+});
 
-// pdRouter.get("/edit/:pd_id", async (req, res) => {
-//   res.locals.title = "編輯商品 - " + res.locals.title;
-//   res.locals.pageName = "pd-edit";
+pdRouter.get("/edit/:pd_id", async (req, res) => {
+  res.locals.title = "編輯商品 - " + res.locals.title;
+  res.locals.pageName = "pd-edit";
 
-//   const pd_id = parseInt(req.params.pd_id); // 轉換成整數
-//   if (pd_id < 1) {
-//     return res.redirect("/products"); // 跳到列表頁
-//   }
-//   const r_sql = `SELECT * FROM products WHERE id=? `;
-//   const [rows] = await db.query(r_sql, [pd_id]);
-//   if (!rows.length) {
-//     return res.redirect("/products"); // 沒有該筆資料, 跳走
-//   }
-//   const item = rows[0];
-//   res.render("products/edit", { ...item, item });
-// });
+  const pd_id = parseInt(req.params.pd_id); // 轉換成整數
+  if (pd_id < 1) {
+    return res.redirect("/products"); // 跳到列表頁
+  }
+  const r_sql = `SELECT * FROM products WHERE id=? `;
+  const [rows] = await db.query(r_sql, [pd_id]);
+  if (!rows.length) {
+    return res.redirect("/products"); // 沒有該筆資料, 跳走
+  }
+  const item = rows[0];
+  res.render("products/edit", { ...item, item });
+});
+*/
 
 // ******************** API ****************************
 //取得所有資料
@@ -223,33 +228,28 @@ pdRouter.get("/api/:pd_id", async (req, res) => {
 });
 
 // 刪除資料
-// pdRouter.delete("/api/:pd_id", async (req, res) => {
-//   const output = {
-//     success: false,
-//     al_id: req.params.pd_id,
-//     error: "",
-//   };
-//   const { success, data, error } = await getItemById(req.params.pd_id);
-//   if (!success) {
-//     // 沒拿到資料
-//     output.error = error;
-//     return res.json(output);
-//   }
-
-//   const { id, image } = data; // 欄位裡的檔名
-//   if (image) {
-//     output.hadRemovedUploaded = await removeUploadedImg(image);
-//   }
-
-//   const d_sql = `DELETE FROM products WHERE id=? `;
-//   const [result] = await db.query(d_sql, [pd_id]);
-//   output.result = result; // 除錯用意
-//   output.success = !!result.affectedRows;
-//   return res.json(output);
-// });
+pdRouter.delete("/api/:pd_id", async (req, res) => {
+  const pd_id = parseInt(req.params.pd_id, 10);
+  if (!pd_id || pd_id < 1) {
+    return res.json({ success: false, error: "無效的商品 ID" });
+  }
+  // 先取出該商品的圖片
+  const { success, data } = await getItemById(pd_id);
+  if (!success) {
+    return res.json({ success: false, error: "商品不存在" });
+  }
+  // 刪除商品
+  const d_sql = `DELETE FROM products WHERE id=?`;
+  const [result] = await db.query(d_sql, [pd_id]);
+  // 刪除圖片
+  if (data.image) {
+    await removeUploadedImg(data.image);
+  }
+  res.json({ success: !!result.affectedRows });
+});
 
 // 編輯資料
-pdRouter.post("/edit/:id", async (req, res) => {
+pdRouter.post("/api/edit/:id", async (req, res) => {
   const output = {
     success: false,
     pd_id: req.params.id,
@@ -298,19 +298,33 @@ pdRouter.post("/edit/:id", async (req, res) => {
   } catch (error) {
     output.error = error.message;
   }
-
   res.json(output);
 });
 
 // 表單送出更新資料庫
-pdRouter.post("/api", upload.single("image"), async (req, res) => {
+pdRouter.put("/api/:id", upload.single("image"), async (req, res) => {
+  console.log("收到的 req.body:", req.body); // 確保 req.body 不是 undefined
+  console.log("收到的 product_name:", req.body.product_name); // 確保 product_name 有資料
+
   const output = {
     success: false,
     bodyData: req.body,
     result: null,
+    error: "",
   };
+
+  // 先取到原本的項目資料
+  const {
+    success,
+    error,
+    data: originalData,
+  } = await getItemById(req.params.id);
+  if (!success) {
+    output.error = error;
+    return res.json(output);
+  }
+  // 表單資料
   let {
-    image,
     product_code,
     product_name,
     category_id,
@@ -320,8 +334,10 @@ pdRouter.post("/api", upload.single("image"), async (req, res) => {
     color,
     inventory,
   } = req.body;
-  const zResult = abSchema.safeParse(req.body);
 
+  /*
+  // 表單驗證
+  const zResult = abSchema.safeParse(req.body);
   // 如果資料驗證沒過
   if (!zResult.success) {
     if (req.file && req.file.filename) {
@@ -329,6 +345,7 @@ pdRouter.post("/api", upload.single("image"), async (req, res) => {
     }
     return res.json(zResult);
   }
+  */
 
   const dataObj = {
     product_code,
@@ -340,20 +357,39 @@ pdRouter.post("/api", upload.single("image"), async (req, res) => {
     color,
     inventory,
   };
-  // 判斷有沒有上傳圖片
+  // 判斷有沒有上傳頭貼
   if (req.file && req.file.filename) {
     dataObj.image = req.file.filename;
   }
 
   const sql = `
-      INSERT INTO products SET ?;
-    `;
+  UPDATE products 
+  SET ${Object.keys(dataObj)
+    .map((key) => `${key} = ?`)
+    .join(", ")}
+  WHERE id = ?;
+`;
+
+  const values = [...Object.values(dataObj), originalData.id];
+
+  console.log(sql);
+  console.log(values);
+
   try {
-    const [result] = await db.query(sql, [dataObj]);
+    const [result] = await db.query(sql, values);
+
+    console.log(result);
 
     output.result = result;
-    output.success = !!result.affectedRows;
+
+    output.success = !!result.changedRows;
+    // 判斷有沒有上傳頭貼, 有的話刪掉之前的頭貼
+    if (req.file && req.file.filename) {
+      removeUploadedImg(originalData.image);
+    }
   } catch (ex) {
+    console.log(ex);
+
     if (req.file && req.file.filename) {
       removeUploadedImg(req.file.filename);
     }
@@ -362,84 +398,5 @@ pdRouter.post("/api", upload.single("image"), async (req, res) => {
 
   res.json(output);
 });
-
-// pdRouter.put("/api/:id", upload.single("image"), async (req, res) => {
-//   console.log("收到的 req.body:", req.body); // 確保 req.body 不是 undefined
-//   console.log("收到的 product_name:", req.body.product_name); // 確保 product_name 有資料
-
-//   const output = {
-//     success: false,
-//     bodyData: req.body,
-//     result: null,
-//     error: "",
-//   };
-
-//   // 先取到原本的項目資料
-//   const {
-//     success,
-//     error,
-//     data: originalData,
-//   } = await getItemById(req.params.pd_id);
-//   if (!success) {
-//     output.error = error;
-//     return res.json(output);
-//   }
-//   // 表單資料
-//   // let {
-//   //   product_code,
-//   //   product_name,
-//   //   category_id,
-//   //   product_description,
-//   //   price,
-//   //   size,
-//   //   color,
-//   //   inventory,
-//   // } = req.body;
-
-//   // 表單驗證
-//   // const zResult = abSchema.safeParse(req.body);
-//   // // 如果資料驗證沒過
-//   // if (!zResult.success) {
-//   //   if (req.file && req.file.filename) {
-//   //     removeUploadedImg(req.file.filename);
-//   //   }
-//   //   return res.json(zResult);
-//   // }
-
-//   // const dataObj = {
-//   //   product_code,
-//   //   product_name,
-//   //   category_id,
-//   //   product_description,
-//   //   price,
-//   //   size,
-//   //   color,
-//   //   inventory,
-//   // };
-//   // // 判斷有沒有上傳頭貼
-//   // if (req.file && req.file.filename) {
-//   //   dataObj.image = req.file.filename;
-//   // }
-
-//   // const sql = `
-//   //     UPDATE products SET ? WHERE id=?;
-//   //   `;
-//   // try {
-//   //   const [result] = await db.query(sql, [dataObj, originalData.pd_id]);
-//   //   output.result = result;
-//   //   output.success = !!result.changedRows;
-//   //   // 判斷有沒有上傳頭貼, 有的話刪掉之前的頭貼
-//   //   if (req.file && req.file.filename) {
-//   //     removeUploadedImg(originalData.image);
-//   //   }
-//   // } catch (ex) {
-//   //   if (req.file && req.file.filename) {
-//   //     removeUploadedImg(req.file.filename);
-//   //   }
-//   //   output.ex = ex;
-//   // }
-
-//   res.json(output);
-// });
 
 export default pdRouter;
