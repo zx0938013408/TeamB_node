@@ -54,6 +54,8 @@ app.use(
   })
 );
 
+
+
 // **** 自訂的 top-level middlewares ****
 app.use((req, res, next) => {
   res.locals.title = "小新的網站"; // 預設的 "頁面 title"
