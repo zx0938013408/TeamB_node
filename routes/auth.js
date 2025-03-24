@@ -7,7 +7,25 @@ import multer from "multer";
 
 
 
+
+
+
 const router = express.Router();
+
+export const checkAuth = (req, res, next) => {
+  const token = req.header('Authorization')?.split(' ')[1]; // 從 Authorization 標頭中取得 token
+  if (!token) {
+    return res.status(401).json({ message: "未提供有效的Token" });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_KEY); // 驗證 token
+    req.user = decoded; // 將解碼後的用戶資料儲存在請求對象中
+    next(); // 呼叫下一個中介軟體或路由處理器
+  } catch (error) {
+    return res.status(401).json({ message: "Token 驗證失敗" });
+  }
+};
 
 //處理照片上傳
 router.post("/avatar/api", upload.single("avatar"), (req, res) => {
@@ -319,6 +337,23 @@ router.post("/api/register", upload.single("avatar"), async (req, res) => {
       if (!email || !password || !name || !gender || !birthday_date || !phone || !address ||!district ||!city ||!school || !id_card) {
         return res.json({ success: false, message: "請填寫完整資訊" });
       }
+
+      const idCardRegex = /^[0-9]{4}$/;
+      if (!idCardRegex.test(id_card)) {
+        return res.json({ success: false, message: "身分證後四碼格式不正確" });
+      }
+
+      const phoneRegex = /^09\d{8}$/;  // 以 09 開頭，後面是 8 位數字
+      if (!phoneRegex.test(phone)) {
+        return res.json({ success: false, message: "手機格式不正確" });
+      }
+
+      const addressRegex = /^[\u4e00-\u9fa50-9]{5,}$/;  // 只允許數字和國字，且至少5個字符
+      if (!addressRegex.test(address)) {
+        return res.json({ success: false, message: "地址格式不正確" });
+      }
+
+
   
       // 檢查電子郵件是否已經註冊
       const [emailCheck] = await db.query("SELECT * FROM members WHERE email = ?", [email]);
@@ -346,8 +381,8 @@ router.post("/api/register", upload.single("avatar"), async (req, res) => {
       // 插入資料到資料庫
    // 插入會員資料
       var sql = `
-      INSERT INTO members (id,email, password, password_hashed, city_id, area_id, name, gender, birthday_date, phone, address,school, id_card, photo_url)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?,?,?,?);
+      INSERT INTO members (id, email, password, password_hashed, city_id, area_id, name, gender, birthday_date, phone, address, school,  id_card,  photo_url)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
       `;
 
       var values = [new_member_id,email,"" , hashedPassword, city, district, name, gender, birthday_date, phone, address,school, id_card, avatarPath];
@@ -388,82 +423,6 @@ router.post("/api/register", upload.single("avatar"), async (req, res) => {
       res.status(500).json({ success: false, message: "伺服器錯誤" });
     }
   });
-
-// router.post("/api/register", upload.single("avatar"), async (req, res) => {
-//   try {
-//     const { email, password, name, gender, city, sport, birthday_date, phone, address, district, school, id_card } = req.body;
-
-//     // 檢查是否填寫完整資訊
-//     if (!email || !password || !name || !gender || !birthday_date || !phone || !address || !district || !city || !school || !id_card) {
-//       return res.json({ success: false, message: "請填寫完整資訊" });
-//     }
-
-//      console.log(req.body); // 列印出提交的資料，查看哪些欄位為空
-
-//     // 檢查電子郵件是否已經註冊
-//     const [emailCheck] = await db.query("SELECT * FROM members WHERE email = ?", [email]);
-//     if (emailCheck.length > 0) {
-//       return res.json({ success: false, message: "該用戶已註冊" });
-//     }
-
-//     // 檢查學校欄位是否符合格式（假設學校名稱不為空）
-//     if (!school.trim()) {
-//       return res.json({ success: false, message: "請填寫正確的學校名稱" });
-//     }
-
-//     // 檢查身份證字號的後四碼（假設為數字）
-//     const idCardLastFourRegex = /^[0-9]{4}$/;  // 檢查是否為 4 位數字
-//     if (!id_card.match(idCardLastFourRegex)) {
-//       return res.json({ success: false, message: "身份證字號後四碼格式錯誤" });
-//     }
-
-//     // 密碼加密
-//     const hashedPassword = await bcrypt.hash(password, 10);
-
-//     // 設置預設頭像
-//     const avatarPath = req.file ? `imgs/${req.file.filename}` : `imgs/cat.jpg`;
-
-//     // 解析運動選項
-//     let sportAry = sport.split(',');
-
-//     // 查詢新的會員ID
-//     var sql = `SELECT max(id)+1 as new_member_id FROM members`;
-//     const [member_id_result] = await db.query(sql);
-//     const new_member_id = member_id_result[0].new_member_id;
-
-//     // 插入會員資料
-//     var sql = `
-//       INSERT INTO members (id,email, password, password_hashed, city_id, area_id, name, gender, birthday_date, phone, address, school, id_card, photo_url)
-//       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-//     `;
-//     var values = [new_member_id, email, "", hashedPassword, city, district, name, gender, birthday_date, phone, address, school, id_card, avatarPath];
-//     const [result] = await db.query(sql, values);
-
-//     // 插入對應的運動資料
-//     for (let sport_id of sportAry) {
-//       var sql = `INSERT INTO member_sports (member_id, sport_id) VALUES (?, ?);`;
-//       var values = [new_member_id, sport_id];
-//       await db.query(sql, values);
-//     }
-
-//     // 生成 JWT Token
-//     const token = jwt.sign({ id: result.insertId, email: result.email }, process.env.JWT_KEY);
-
-//     // 傳回註冊結果
-//     res.json({
-//       success: true,
-//       message: "註冊成功",
-//       data: {
-//         id: result.insertId,
-//         email: result.email,
-//         token: token,
-//         avatar: avatarPath,
-//       },
-//     });
-//   } catch (error) {
-//     res.status(500).json({ success: false, message: "伺服器錯誤" });
-//   }
-// });
 
 
 
@@ -714,91 +673,81 @@ router.put('/user-edit', upload.single('avatar'), async (req, res) => {
     }
   });
   
-  
-  // 處理密碼重設請求 可以：沒有token
-  // router.post("/reset-password", async (req, res) => {
-  //   const { school, id_card, newPassword } = req.body;
-  
-  //   try {
-  //     // 查找匹配的用戶
-  //     const [users] = await db.query(
-  //       "SELECT * FROM members WHERE school = ? AND id_card = ?",
-  //       [phone, birthday_date]
-  //     );
-  
-  //     if (users.length == 0) {
-  //       return res.json({ success: false, message: "無此會員" });    }
-  
-  //     // 密碼加密
-  //     const hashedPassword = await bcrypt.hash(newPassword, 10);
-  
-  //     let user = users[0];
-  //     // 更新用戶密碼，注意將欄位名稱更改為 password_hashed
-  //     const result = await db.query(
-  //       "UPDATE members SET password_hashed = ? WHERE id = ?",
-  //       [hashedPassword, user.id]
-  //     );
-    
-  //     if (result.affectedRows === 0) {
-  //       return sendError(res, "更新密碼失敗", 500);
-  //     }
-  
-  //     res.json({ success: true, message: "密碼已重設成功！" });
-  //   } catch (error) {
-  //     console.error("Error resetting password: ", error);
-  //     res.status(500).json({ success: false, message: "伺服器錯誤" }); // 使用 sendError 返回錯誤
-  //   }
-  // });
 
-  // 處理密碼重設請求 
-  router.post("/reset-password", async (req, res) => {
-    const { school, id_card, newPassword } = req.body;
-    const token = req.headers["authorization"]?.split(" ")[1]; // 取得 token
+//驗證舊密碼
+router.post('/api/check-old-password', checkAuth, async (req, res) => {
+  const { oldPassword } = req.body;
+  const userId = req.user.id;
 
-    if (!token) {
-        return res.status(401).json({ success: false, message: "未提供有效的 token" });
-    }
+  // 查詢用戶的舊密碼
+  const [rows] = await db.query('SELECT password_hashed FROM members WHERE id = ?', [userId]);
 
-    try {
-        // 驗證 token 是否有效
-        const decoded = jwt.verify(token, process.env.JWT_SECRET); // 驗證 token 並解碼
+  if (!rows.length) {
+    return res.status(404).json({ message: '用戶不存在' });
+  }
 
-        // 查找匹配的用戶
-        const [users] = await db.query(
-            "SELECT * FROM members WHERE school = ? AND id_card = ?",
-            [school, id_card] // 根據 school 和 id_card 查詢
-        );
+  const user = rows[0];
+  const isOldPasswordValid = await bcrypt.compare(oldPassword, user.password_hashed);
 
-        if (users.length === 0) {
-            return res.status(404).json({ success: false, message: "無此會員" });
-        }
+  if (!isOldPasswordValid) {
+    return res.status(400).json({ success: false, message: '舊密碼錯誤' });
+  }
 
-        const user = users[0]; // 獲取第一個匹配的用戶
-
-        // 檢查 token 是否與資料庫中的用戶資料相符（可選）
-        if (user.id !== decoded.id) {
-            return res.status(403).json({ success: false, message: "無權限修改此帳戶的密碼" });
-        }
-
-        // 密碼加密
-        const hashedPassword = await bcrypt.hash(newPassword, 10);
-
-        // 更新用戶密碼
-        const [updateResult] = await db.query(
-            "UPDATE members SET password_hashed = ? WHERE id = ?",
-            [hashedPassword, user.id]
-        );
-    
-        if (updateResult.affectedRows === 0) {
-            return res.status(500).json({ success: false, message: "更新密碼失敗" });
-        }
-
-        res.json({ success: true, message: "密碼已重設成功！" });
-    } catch (error) {
-        console.error("Error resetting password: ", error);
-        res.status(500).json({ success: false, message: "伺服器錯誤" });
-    }
+  return res.json({ success: true });
 });
+
+
+//會員改密碼
+router.post('/api/change-password', checkAuth, async (req, res) => {
+  const { oldPassword, newPassword, confirmPassword } = req.body;
+
+  // 檢查新密碼和確認密碼是否相同
+  if (newPassword !== confirmPassword) {
+    return res.status(400).json({ message: '新密碼和確認密碼不一致' });
+  }
+
+  // 檢查新密碼的長度
+  if (newPassword.length < 6) {
+    return res.status(400).json({ message: '新密碼至少需要 6 個字符' });
+  }
+
+  try {
+    // 從請求的 JWT token 獲取用戶 ID
+    const userId = req.user.id;
+
+    // 查詢用戶的舊密碼
+    const [rows] = await db.query('SELECT password_hashed FROM members WHERE id = ?', [userId]);
+
+    if (!rows.length) {
+      return res.status(404).json({ message: '用戶不存在' });
+    }
+
+    const user = rows[0];
+
+    // 比對舊密碼
+    const isOldPasswordValid = await bcrypt.compare(oldPassword, user.password_hashed);
+
+    if (!isOldPasswordValid) {
+      return res.status(400).json({ message: '原始密碼錯誤' });
+    }
+
+    // 哈希新密碼
+    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+
+    // 更新密碼
+    await db.query('UPDATE members SET password_hashed = ? WHERE id = ?', [hashedNewPassword, userId]);
+
+    res.json({ message: '密碼更改成功，請重新登入' });
+    
+  } catch (error) {
+    console.error('Error changing password:', error);
+    res.status(500).json({ message: '伺服器錯誤' });
+  }
+});
+
+
+
+
 
 
 
