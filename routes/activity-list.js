@@ -212,8 +212,7 @@ const getListData = async (req) => {
   }
   //
   // 查詢資料 (依各自資料庫資料顯示需求更改下列)
-  const sql = `SELECT 
-  SELECT 
+  const sql = `SELECT  
   al.al_id, 
   al.activity_name, 
   st.sport_name, 
