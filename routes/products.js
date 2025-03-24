@@ -84,8 +84,10 @@ const getListData = async (req) => {
   const perPage = output.perPage;
   let page = +req.query.page || 1;
   let keyword = req.query.keyword ? req.query.keyword.trim() : "";
-  let price_lowest = req.query.price_lowest || "";
-  let price_highest = req.query.price_highest || "";
+  let price_lowest = parseFloat(req.query.price_lowest) || 0;
+  let price_highest = parseFloat(req.query.price_highest) || Infinity;
+  let category_id = parseInt(req.query.category_id) || null; // 新增分類篩選
+  let sportType = req.query.sports ? req.query.sports.trim() : ""; // 新增運動類別篩選
   let sortField = req.query.sortField || "id";
   let sortRule = req.query.sortRule || "asc"; // asc, desc
 
@@ -109,10 +111,31 @@ const getListData = async (req) => {
 
   // 組合 Where 條件
   let where = ` WHERE 1 `;
+  let params = [];
   if (keyword) {
     output.keyword = keyword; // 要輸出給 EJS
     let keyword_ = db.escape(`%${keyword}%`); // 防止 SQL 注入
-    where += ` AND (pd.product_name LIKE ${keyword_} OR product_description LIKE ${keyword_}) `;
+    where += ` AND (pd.product_name LIKE ? OR pd.product_description LIKE ?) `;
+    params.push(`%${keyword_}%`, `%${keyword_}%`);
+  }
+
+  if (!isNaN(price_lowest) && price_lowest > 0) {
+    where += ` AND pd.price >= ? `;
+    params.push(price_lowest);
+  }
+
+  if (!isNaN(price_highest) && price_highest < Infinity) {
+    where += ` AND pd.price <= ? `;
+    params.push(price_highest);
+  }
+
+  if (category_id) {
+    where += ` AND pd.category_id = ? `;
+    params.push(category_id);
+  }
+  if (sportType) {
+    where += ` AND pd.sports = ? `;
+    params.push(sportType);
   }
 
   // 處理分頁錯誤
@@ -124,7 +147,7 @@ const getListData = async (req) => {
   // 查詢總筆數
   const t_sql = `SELECT COUNT(1) AS totalRows 
    FROM products pd ${where} `;
-  const [[{ totalRows }]] = await db.query(t_sql); // 取得總筆數
+  const [[{ totalRows }]] = await db.query(t_sql, params); // 取得總筆數
   const totalPages = Math.ceil(totalRows / perPage);
   let rows = [];
 
@@ -137,13 +160,17 @@ const getListData = async (req) => {
   }
 
   // 查詢資料 (依各自資料庫資料顯示需求更改下列)
-  const sql = `SELECT pd.*, c.categories_name, l.like_id FROM products pd LEFT JOIN categories c ON pd.category_id = c.id
-  LEFT JOIN (
-  SELECT * FROM pd_likes WHERE member_id=?
-) l ON pd.id=l.pd_id
-${where} ${orderBy} LIMIT ?, ?`;
+  const sql = `
+  SELECT pd.*, c.categories_name, l.like_id 
+  FROM products pd 
+  LEFT JOIN categories c ON pd.category_id = c.id
+  LEFT JOIN ( SELECT * FROM pd_likes WHERE member_id=? ) l ON pd.id=l.pd_id
+  ${where} 
+  ${orderBy}
+  LIMIT ?, ?`;
 
-  [rows] = await db.query(sql, [member_id, (page - 1) * perPage, perPage]);
+  params.unshift(member_id, (page - 1) * perPage, perPage);
+  [rows] = await db.query(sql, params);
 
   // 回傳結果
   return { ...output, totalRows, totalPages, page, rows, success: true };
