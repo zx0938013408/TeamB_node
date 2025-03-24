@@ -12,7 +12,6 @@ import registeredRouter from "./routes/registered.js";
 import memberActivitiesRouter from './routes/member-activities.js'; // 會員查詢已報名活動
 import cityRouter from "./routes/city.js"
 import pdRouter from "./routes/products.js"
-import pdRouter from "./routes/products.js"
 import activityCreateRouter from "./routes/activity-create.js"
 
 
