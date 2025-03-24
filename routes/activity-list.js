@@ -126,6 +126,7 @@ const abSchema = z.object({
 //
 //取得通訊錄清單
 const getListData = async (req) => {
+  const memberId = req.session.admin?.id;
   const output = {
     success: false,
     redirect: undefined, // 提示頁面要做跳轉
@@ -212,6 +213,7 @@ const getListData = async (req) => {
   //
   // 查詢資料 (依各自資料庫資料顯示需求更改下列)
   const sql = `SELECT 
+  SELECT 
   al.al_id, 
   al.activity_name, 
   st.sport_name, 
@@ -227,34 +229,26 @@ const getListData = async (req) => {
   al.create_time,
   al.update_time,
   al.avatar,
-IFNULL(SUM(r.num), 0) AS registered_people
+  IFNULL(SUM(r.num), 0) AS registered_people,
+  IF(f.id IS NULL, 0, 1) AS is_favorite
 FROM activity_list al
 JOIN sport_type st ON al.sport_type_id = st.id
 JOIN areas a ON al.area_id = a.area_id
 JOIN court_info ci ON al.court_id = ci.id
 JOIN members m ON al.founder_id = m.id
 LEFT JOIN registered r ON al.al_id = r.activity_id
+LEFT JOIN favorites f ON f.activity_id = al.al_id AND f.member_id = ?
 ${where}
 GROUP BY 
-  al.al_id, 
-  al.activity_name, 
-  st.sport_name, 
-  a.name, 
-  ci.address,
-  ci.name,
-  al.activity_time, 
-  al.deadline, 
-  al.payment, 
-  al.need_num, 
-  al.introduction,
-  m.name, 
-  al.create_time,
-  al.update_time,
-  al.avatar
+  al.al_id, al.activity_name, st.sport_name, a.name, ci.address, ci.name,
+  al.activity_time, al.deadline, al.payment, al.need_num, al.introduction,
+  m.name, al.create_time, al.update_time, al.avatar, f.id
 ${orderBy}
-LIMIT ${(page - 1) * perPage}, ${perPage}`;
+LIMIT ${(page - 1) * perPage}, ${perPage}
+`;
 
-  [rows] = await db.query(sql);
+[rows] = await db.query(sql, [memberId]);
+  
   //
   // 格式化活動日期(各自資料庫有時間設定的需求改寫下列)
   rows.forEach((r) => {
@@ -656,6 +650,31 @@ router.put("/api/:al_id", upload.single("avatar"), async (req, res) => {
   }
 
   res.json(output);
+});
+
+// 加入最愛功能
+router.post("/api/favorite", async (req, res) => {
+  const memberId = req.session.admin?.id;
+  const { activityId } = req.body;
+
+  if (!memberId || !activityId) {
+    return res.status(400).json({ success: false, error: "缺少參數" });
+  }
+
+  try {
+    const checkSql = "SELECT * FROM favorites WHERE member_id = ? AND activity_id = ?";
+    const [rows] = await db.query(checkSql, [memberId, activityId]);
+
+    if (rows.length > 0) {
+      await db.query("DELETE FROM favorites WHERE member_id = ? AND activity_id = ?", [memberId, activityId]);
+      return res.json({ success: true, liked: false });
+    } else {
+      await db.query("INSERT INTO favorites (member_id, activity_id) VALUES (?, ?)", [memberId, activityId]);
+      return res.json({ success: true, liked: true });
+    }
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 export default router;
