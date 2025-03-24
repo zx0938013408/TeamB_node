@@ -13,8 +13,7 @@ import memberActivitiesRouter from './routes/member-activities.js'; // 會員查
 import cityRouter from "./routes/city.js"
 import pdRouter from "./routes/products.js"
 import authRouter from "./routes/auth.js"
-
-
+import activityCreateRouter from "./routes/activity-create.js"
 
 
 const MysqlStore = mysql_session(session);
@@ -71,7 +70,7 @@ app.use('/members', memberActivitiesRouter);
 app.use("/city-area", cityRouter);
 app.use("/products", pdRouter);
 app.use('/auth',authRouter);
-
+app.use("/activity-create", activityCreateRouter);
 
 app.get("/", (req, res) => {
   res.locals.title = "首頁 - " + res.locals.title;
