@@ -1,0 +1,805 @@
+import express from "express";
+import db from "../utils/connect-mysql.js";
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
+import upload from "../utils/upload-images.js";
+import multer from "multer";
+
+
+
+const router = express.Router();
+
+//處理照片上傳
+router.post("/avatar/api", upload.single("avatar"), (req, res) => {
+  try {
+    const avatarUrl = `/imgs/${req.file.filename}`; // 返回圖片的 URL
+    // 儲存使用者資料與頭像 URL 到資料庫
+    res.json({
+      success: true,
+      avatarUrl: avatarUrl,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "圖片上傳失敗",
+    });
+  }
+});
+
+
+//取得會員資料
+router.get('/members/api', async (req, res) => {
+  try {
+    const sql = `
+      SELECT
+    id,
+    name,
+    gender,
+    birthday_date,
+    citys.city_name AS city,
+    address,
+    phone,
+    email,
+    password_hashed,
+    photo_url AS avatar
+FROM members
+LEFT JOIN citys ON citys.city_id = members.city_id;
+
+    `;
+
+    
+
+    const [rows] = await db.query(sql);
+
+    res.json({
+      success: true,
+      data: rows,
+    });
+  } catch (error) {
+    console.error('取得會員資料錯誤:', error);
+    res.status(500).json({ success: false, message: '伺服器錯誤' });
+  }
+});
+
+
+//更新會員資料
+router.put("/member/api/:id", upload.single("avatar"), async (req, res) => {
+  try {
+    console.log(req.file)
+    const { id } = req.params;  
+    const { name, gender, phone, address, city_id, area_id ,sport} = req.body;
+    console.log("Request body:", req.body);
+
+
+    
+    // 檢查必要的欄位是否有填寫
+    if (!name || !gender ||  !phone || !address || !city_id || !area_id ||!sport) {
+      return res.json({ success: false, message: "請填寫完整資訊" });
+    }
+
+     const avatarPath = req.file ? `imgs/${req.file.filename}` : null; 
+
+
+
+    // 更新會員資料的 SQL 語句
+    let sql = `
+      UPDATE members
+      SET 
+        name = ?, 
+        gender = ?, 
+        phone = ?, 
+        address = ?, 
+        city_id = ?, 
+        area_id = ?, 
+        photo_url =?
+        
+      WHERE id = ?;
+    `;
+
+
+    
+
+    // 插入新的資料
+    const values = [name, gender, phone, address, city_id, area_id, avatarPath, id];
+    const [result] = await db.query(sql, values);
+    
+
+    // 判斷是否更新成功
+    if (result.affectedRows > 0) {
+    
+       await db.query("DELETE FROM member_sports WHERE member_id = ?", [id]); 
+
+      // 使用 forEach 來插入新的運動資料
+      let sportAry = sport.split(',');  // 解析運動選項，確保傳遞的是正確的字串格式
+      for (let sport_id of sportAry) {
+        var sportSql = `
+          INSERT INTO member_sports (member_id, sport_id)
+          VALUES (?, ?);
+        `;
+        var sportValues = [id, sport_id];
+        await db.query(sportSql, sportValues);
+      }
+
+      // 返回更新結果
+      res.json({
+        success: true,
+        message: "會員資料更新成功",
+        data: {
+          id: id, 
+          name: name,
+          email: req.body.email,  
+          avatar: avatarPath,  
+        },
+      });
+    } else {
+      res.status(404).json({
+        success: false,
+        message: "找不到該會員，更新失敗",
+      });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "伺服器錯誤，請稍後再試",
+    });
+  }
+});
+
+
+//更新會員密碼
+router.put('/update/password/:id', async (req, res) => {
+  
+  const { id } = req.params;  // 取得用戶 ID
+  const { newPassword } = req.body;  // 取得新密碼
+
+  // 檢查新密碼是否存在
+  if (!newPassword) {
+    return res.status(400).json({ success: false, message: '新密碼必須提供' });
+  }
+
+  try {
+    // 密碼加密
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // 更新資料庫中的密碼
+    db.query(
+      'UPDATE members SET password_hashed = ? WHERE id = ?',
+      [hashedPassword, id],
+      (error, results) => {
+        if (error) {
+          console.error('數據庫錯誤:', error);
+          return res.status(500).json({ success: false, message: '無法更新密碼' });
+        }
+
+        // 如果 affectedRows 為 0，表示沒有找到該用戶
+        if (results.affectedRows === 0) {
+          return res.status(404).json({ success: false, message: '用戶未找到' });
+        }
+
+        // 成功更新
+        return res.status(200).json({ success: true, message: '成功更新密碼' });
+      }
+    );
+  } catch (error) {
+    console.error('更新密碼時出錯:', error);
+    return res.status(500).json({ success: false, message: '無法更新密碼' });
+  }
+});
+
+
+
+
+
+//獲得單筆會員資料
+router.get('/members/api/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+   
+
+
+    
+    let sql = `SELECT 
+    members.name,
+    members.gender,
+    members.birthday_date,
+    citys.city_id ,
+    citys.city_name AS city,
+	areas.area_id,
+    areas.name AS area,
+    members.address,
+    members.phone,
+    members.photo_url AS avatar,
+    GROUP_CONCAT(sport_type.sport_name SEPARATOR ', ') AS sports,
+    GROUP_CONCAT(sport_type.id SEPARATOR ', ') AS sport_id
+    FROM members 
+    JOIN citys ON citys.city_id = members.city_id
+    JOIN areas ON areas.area_id = citys.city_id
+     LEFT JOIN member_sports ON members.id = member_sports.member_id
+      LEFT JOIN sport_type ON member_sports.sport_id = sport_type.id
+      where members.id=? 
+  GROUP BY members.id`;
+
+  const [rows] = await db.query(sql, [id]);
+    
+
+    if (rows.length > 0) {
+      res.json({
+        success: true,
+        data: rows,
+      });
+    } else {
+      res.status(404).json({
+        success: false,
+        message: "會員資料未找到",
+      });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "伺服器錯誤，請稍後再試",
+    });
+  }
+});
+
+
+//獲取某個縣市的地區
+router.get("/api/areas/:cityId", async (req, res) => {
+  try{
+  const { cityId } = req.params;
+  
+  const query = "SELECT area_id,name FROM areas WHERE city_id = ?";
+  const [rows] = await db.query(query, [cityId]);
+ 
+  // const areaNames = rows.map(area => area.name);
+    
+    // 回應結果
+   return res.json({
+      success: true,
+      data: rows, // 這會是包含所有區域名稱的陣列
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: '伺服器錯誤，請稍後再試',
+    });
+  }
+});
+
+
+//取得所有縣市
+router.get("/city/api", async(req, res) =>{
+
+    const query = "SELECT city_name as name,city_id as id FROM citys "
+    const [rows] =await db.query(query)
+    // const cityName = rows.map(rows => rows.city_name)
+    return res.json({
+      success:true,
+      data:rows,
+    })
+    
+
+
+  
+})
+
+
+//檢查電子郵件是否已經註冊
+router.post("/api/check-email", async (req, res) => {
+    try {
+      const { email } = req.body;
+  
+      if (!email) {
+        return res.json({ success: false, message: "請提供電子郵件" });
+      }
+  
+      // 檢查資料庫中是否已經有此電子郵件
+      const [result] = await db.query("SELECT * FROM members WHERE email = ?", [email]);
+  
+      if (result.length > 0) {
+        // 如果找到結果，表示該電子郵件已經註冊過
+        return res.json({ success: false, message: "該用戶已註冊" });
+      }
+  
+      // 如果沒找到資料，表示可以註冊
+      return res.json({ success: true, message: "該電子郵件可以使用" });
+    } catch (error) {
+      console.error("檢查電子郵件錯誤:", error);
+      res.status(500).json({ success: false, message: "伺服器錯誤" });
+    }
+  });
+
+//註冊
+router.post("/api/register", upload.single("avatar"), async (req, res) => {
+    try {
+      const { email, password, name, gender,city, sport, birthday_date, phone, address,district,school, id_card  } = req.body;
+  
+      if (!email || !password || !name || !gender || !birthday_date || !phone || !address ||!district ||!city ||!school || !id_card) {
+        return res.json({ success: false, message: "請填寫完整資訊" });
+      }
+  
+      // 檢查電子郵件是否已經註冊
+      const [emailCheck] = await db.query("SELECT * FROM members WHERE email = ?", [email]);
+  
+      if (emailCheck.length > 0) {
+        return res.json({ success: false, message: "該用戶已註冊" });
+      }
+  
+      const hashedPassword = await bcrypt.hash(password, 10);
+  
+      const avatarPath = req.file ? `imgs/${req.file.filename}` : `imgs/cat.jpg`;
+      
+      
+      // 解析運動選項，確保傳遞的是正確的字串格式
+      let sportAry = sport.split(',');   
+    
+      var sql =`
+      SELECT max(id)+1 as new_member_id FROM members
+      `;
+      const [member_id_result] = await db.query(sql); 
+      const new_member_id = member_id_result[0].new_member_id
+
+      
+  
+      // 插入資料到資料庫
+   // 插入會員資料
+      var sql = `
+      INSERT INTO members (id,email, password, password_hashed, city_id, area_id, name, gender, birthday_date, phone, address,school, id_card, photo_url)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?,?,?,?);
+      `;
+
+      var values = [new_member_id,email,"" , hashedPassword, city, district, name, gender, birthday_date, phone, address,school, id_card, avatarPath];
+      const [result] = await db.query(sql, values);
+
+
+
+
+      // 使用 forEach 來插入對應的運動資料
+      for (let sport_id of sportAry) {
+      var sql = `
+        INSERT INTO member_sports (member_id, sport_id)
+        VALUES (?, ?);
+      `;
+
+      var values = [new_member_id, sport_id]; // 使用插入的 member_id 和對應的 sport_id
+      await db.query(sql, values);
+}
+
+    
+      const row = result; // 取得插入的結果
+  
+      // 生成 JWT Token
+      const token = jwt.sign({ id: row.insertId, email: row.email }, process.env.JWT_KEY);
+  
+      // 傳回註冊結果
+      res.json({
+        success: true,
+        message: "註冊成功",
+        data: {
+          id: row.insertId,  // 使用 insertId 來獲取新插入資料的 ID
+          email: row.email,
+          token: token,
+          avatar: avatarPath,  // 返回头像路径
+        },
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "伺服器錯誤" });
+    }
+  });
+
+// router.post("/api/register", upload.single("avatar"), async (req, res) => {
+//   try {
+//     const { email, password, name, gender, city, sport, birthday_date, phone, address, district, school, id_card } = req.body;
+
+//     // 檢查是否填寫完整資訊
+//     if (!email || !password || !name || !gender || !birthday_date || !phone || !address || !district || !city || !school || !id_card) {
+//       return res.json({ success: false, message: "請填寫完整資訊" });
+//     }
+
+//      console.log(req.body); // 列印出提交的資料，查看哪些欄位為空
+
+//     // 檢查電子郵件是否已經註冊
+//     const [emailCheck] = await db.query("SELECT * FROM members WHERE email = ?", [email]);
+//     if (emailCheck.length > 0) {
+//       return res.json({ success: false, message: "該用戶已註冊" });
+//     }
+
+//     // 檢查學校欄位是否符合格式（假設學校名稱不為空）
+//     if (!school.trim()) {
+//       return res.json({ success: false, message: "請填寫正確的學校名稱" });
+//     }
+
+//     // 檢查身份證字號的後四碼（假設為數字）
+//     const idCardLastFourRegex = /^[0-9]{4}$/;  // 檢查是否為 4 位數字
+//     if (!id_card.match(idCardLastFourRegex)) {
+//       return res.json({ success: false, message: "身份證字號後四碼格式錯誤" });
+//     }
+
+//     // 密碼加密
+//     const hashedPassword = await bcrypt.hash(password, 10);
+
+//     // 設置預設頭像
+//     const avatarPath = req.file ? `imgs/${req.file.filename}` : `imgs/cat.jpg`;
+
+//     // 解析運動選項
+//     let sportAry = sport.split(',');
+
+//     // 查詢新的會員ID
+//     var sql = `SELECT max(id)+1 as new_member_id FROM members`;
+//     const [member_id_result] = await db.query(sql);
+//     const new_member_id = member_id_result[0].new_member_id;
+
+//     // 插入會員資料
+//     var sql = `
+//       INSERT INTO members (id,email, password, password_hashed, city_id, area_id, name, gender, birthday_date, phone, address, school, id_card, photo_url)
+//       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+//     `;
+//     var values = [new_member_id, email, "", hashedPassword, city, district, name, gender, birthday_date, phone, address, school, id_card, avatarPath];
+//     const [result] = await db.query(sql, values);
+
+//     // 插入對應的運動資料
+//     for (let sport_id of sportAry) {
+//       var sql = `INSERT INTO member_sports (member_id, sport_id) VALUES (?, ?);`;
+//       var values = [new_member_id, sport_id];
+//       await db.query(sql, values);
+//     }
+
+//     // 生成 JWT Token
+//     const token = jwt.sign({ id: result.insertId, email: result.email }, process.env.JWT_KEY);
+
+//     // 傳回註冊結果
+//     res.json({
+//       success: true,
+//       message: "註冊成功",
+//       data: {
+//         id: result.insertId,
+//         email: result.email,
+//         token: token,
+//         avatar: avatarPath,
+//       },
+//     });
+//   } catch (error) {
+//     res.status(500).json({ success: false, message: "伺服器錯誤" });
+//   }
+// });
+
+
+
+
+
+
+// 登出
+router.get("/logout", async (req, res) => {
+    delete req.session.admin;
+    res.redirect("/member");
+  });
+
+
+    //jwt登入
+router.post("/login-jwt", async (req, res) => {
+  let { email, password } = req.body || {};
+  const output = {
+    success: false,
+    error: "",
+    code: 0,
+    data: {
+      id: 0,
+      email: "",
+      name: "",
+      token: "",
+    },
+  };
+  email = email?.trim(); // 去掉頭尾空白
+  password = password?.trim();
+  if (!email || !password) {
+    output.error = "欄位資料不足";
+    output.code = 400;
+    return res.json(output);
+  }
+
+  const sql = `SELECT 
+  members.id,
+  members.name,
+  members.gender,
+  members. birthday_date ,
+  citys.city_name AS city,
+  members.address,
+  members.phone,
+  members.email,
+  members.password_hashed,
+  members.photo_url AS avatar,
+    GROUP_CONCAT(sport_type.sport_name SEPARATOR ', ') AS sports
+FROM members 
+JOIN citys ON citys.city_id = members.city_id
+LEFT JOIN member_sports ON members.id = member_sports.member_id
+LEFT JOIN sport_type ON member_sports.sport_id = sport_type.id
+where members.email = ?
+GROUP BY members.id;`;
+
+  const [rows] = await db.query(sql, [email]);
+
+  if (!rows.length) {
+    output.error = "帳號或密碼錯誤";
+    output.code = 410; // 帳號是錯的
+    return res.json(output);
+  }
+
+  const row = rows[0];
+  const result = await bcrypt.compare(password, row.password_hashed);
+  if (!result) {
+    output.error = "帳號或密碼錯誤";
+    output.code = 420; // 密碼是錯的
+    return res.json(output);
+  }
+  output.success = true; // 登入成功
+  const token = jwt.sign(
+    {
+      id: row.id,
+      email: row.email,
+    },
+    process.env.JWT_KEY
+  );
+  output.data = {
+    id: row.id,
+    email: row.email,
+    gender: row.gender,
+    phone: row.phone,
+    city: row.city,
+    area: row.area,
+    address: row.address,
+    name: row.name,
+    avatar: row.avatar,
+    birthday_date: row.birthday_date,
+    sports:row.sports,
+    token,
+  };
+  
+  res.json(output);
+});
+
+router.get("/jwt-data", (req, res) => {
+    res.json(req.my_jwt);
+  });
+
+
+  //會員資料
+//   router.get('/api-profile', async (req, res) => {
+//     const token = req.headers['authorization']?.split(' ')[1];
+//     if (!token) {
+//       return res.status(401).json({ success: false, message: '未登入或 Token 過期' });
+//     }
+  
+//     try {
+//       const decoded = jwt.verify(token, process.env.JWT_KEY);
+//       const sql = `SELECT
+//   members.id,
+//   members.name,
+//   members.gender,
+//   members.birthday_date,
+//   members.city_id,
+//     citys.city_name as city,
+//       areas.name as area,
+//   members.address,
+//   members.phone,
+//   members.email,
+//   members.photo_url AS avatar,
+//   GROUP_CONCAT(sport_type.sport_name SEPARATOR ', ') AS sports
+// FROM members
+// LEFT JOIN citys ON citys.city_id = members.city_id
+// LEFT JOIN areas ON areas.area_id = members.area_id
+// LEFT JOIN member_sports ON members.id = member_sports.member_id
+// LEFT JOIN sport_type ON member_sports.sport_id = sport_type.id
+// WHERE members.id = ?
+// GROUP BY members.id;
+// `;
+//       const [rows] = await db.query(sql, [decoded.id]);
+  
+//       if (rows.length > 0) {
+//         const user = rows[0];
+//         res.json({ success: true, data: user });
+//       } else {
+//         res.status(404).json({ success: false, error: '用戶資料不存在' });
+//       }
+//     } catch (err) {
+//       res.status(400).json({ success: false, error: '無效的 Token' });
+//     }
+//   });
+
+
+  // 修改會員資料 API
+router.put('/user-edit', upload.single('avatar'), async (req, res) => {
+    // 驗證是否存在 JWT token
+    const token = req.headers['authorization']?.split(' ')[1]; // 取得 JWT Token
+    if (!token) {
+      return res.status(401).json({ success: false, message: "未登入或 Token 過期" });
+    }
+    try {
+      // 驗證 Token 並解碼
+      const decoded = jwt.verify(token, process.env.JWT_KEY); // 解碼 JWT
+      const userId = decoded.id;
+  
+      // 檢查用戶是否存在
+      const sql_edit = `
+    SELECT 
+      members.id,
+      members.name,
+      members.gender,
+      members.phone,
+      members.address,
+      members.avatar,
+      members.birthday_date,
+      members_sports.sport
+    FROM members
+    LEFT JOIN members_sports ON members_sports.user_id = members.id
+    WHERE members.id = ?
+  `;
+  
+  const [rows] = await db.query(sql, [userId]);
+  
+  
+  
+      if (rows.length === 0) {
+        return res.status(404).json({ success: false, message: "找不到用戶資料" });
+      }
+  
+      // 獲取前端傳來的資料
+      const { name, gender, sport, phone, address } = req.body;
+  
+    
+      let sportText = sport;
+      
+      // 確保 `sport` 是字串，若為陣列則轉換成字串
+      if (Array.isArray(sport)) {
+        sportText = sport.join("、"); // 使用 "、" 作為分隔符
+      }
+      
+      // 預設不更新頭像
+      let avatarPath = rows[0].avatar;
+  
+     
+  
+      // 設定儲存路徑及檔案名稱
+  const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+      // 儲存到 public/imgs 目錄
+      cb(null, path.join(__dirname, "public", "imgs"));
+    },
+    filename: function (req, file, cb) {
+      // 設定檔案名稱為時間戳加原檔名
+      cb(null, Date.now() + path.extname(file.originalname));
+    },
+  });
+  const upload = multer({ storage: storage });
+  
+   // 如果用戶上傳了新的頭像，則更新圖片路徑
+   if (req.file) {
+    avatarPath = `/imgs/${req.file.filename}`;
+  }
+  
+      // 更新用戶資料
+      const updateSql = `
+        UPDATE members 
+        SET 
+          name = ?, 
+          gender = ?, 
+          sport = ?, 
+          phone = ?, 
+          address = ?, 
+          avatar = ?ㄌ
+        WHERE id = ?
+      `;
+      const updateValues = [name, gender, sportText, phone, address, avatarPath, userId];
+  
+      await db.query(updateSql, updateValues);
+  
+      // 返回成功回應
+      res.json({
+        success: true,
+        message: "資料更新成功",
+        user: {
+          id: userId,
+          name,
+          gender,
+          sport: sportText,
+          phone,
+          address,
+          avatar: avatarPath,
+        },
+      });
+    } catch (err) {
+      console.error("更新錯誤:", err);
+      res.status(500).json({ success: false, message: "伺服器錯誤" });
+    }
+  });
+  
+  
+  // 處理密碼重設請求 可以：沒有token
+  // router.post("/reset-password", async (req, res) => {
+  //   const { school, id_card, newPassword } = req.body;
+  
+  //   try {
+  //     // 查找匹配的用戶
+  //     const [users] = await db.query(
+  //       "SELECT * FROM members WHERE school = ? AND id_card = ?",
+  //       [phone, birthday_date]
+  //     );
+  
+  //     if (users.length == 0) {
+  //       return res.json({ success: false, message: "無此會員" });    }
+  
+  //     // 密碼加密
+  //     const hashedPassword = await bcrypt.hash(newPassword, 10);
+  
+  //     let user = users[0];
+  //     // 更新用戶密碼，注意將欄位名稱更改為 password_hashed
+  //     const result = await db.query(
+  //       "UPDATE members SET password_hashed = ? WHERE id = ?",
+  //       [hashedPassword, user.id]
+  //     );
+    
+  //     if (result.affectedRows === 0) {
+  //       return sendError(res, "更新密碼失敗", 500);
+  //     }
+  
+  //     res.json({ success: true, message: "密碼已重設成功！" });
+  //   } catch (error) {
+  //     console.error("Error resetting password: ", error);
+  //     res.status(500).json({ success: false, message: "伺服器錯誤" }); // 使用 sendError 返回錯誤
+  //   }
+  // });
+
+  // 處理密碼重設請求 
+  router.post("/reset-password", async (req, res) => {
+    const { school, id_card, newPassword } = req.body;
+    const token = req.headers["authorization"]?.split(" ")[1]; // 取得 token
+
+    if (!token) {
+        return res.status(401).json({ success: false, message: "未提供有效的 token" });
+    }
+
+    try {
+        // 驗證 token 是否有效
+        const decoded = jwt.verify(token, process.env.JWT_SECRET); // 驗證 token 並解碼
+
+        // 查找匹配的用戶
+        const [users] = await db.query(
+            "SELECT * FROM members WHERE school = ? AND id_card = ?",
+            [school, id_card] // 根據 school 和 id_card 查詢
+        );
+
+        if (users.length === 0) {
+            return res.status(404).json({ success: false, message: "無此會員" });
+        }
+
+        const user = users[0]; // 獲取第一個匹配的用戶
+
+        // 檢查 token 是否與資料庫中的用戶資料相符（可選）
+        if (user.id !== decoded.id) {
+            return res.status(403).json({ success: false, message: "無權限修改此帳戶的密碼" });
+        }
+
+        // 密碼加密
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        // 更新用戶密碼
+        const [updateResult] = await db.query(
+            "UPDATE members SET password_hashed = ? WHERE id = ?",
+            [hashedPassword, user.id]
+        );
+    
+        if (updateResult.affectedRows === 0) {
+            return res.status(500).json({ success: false, message: "更新密碼失敗" });
+        }
+
+        res.json({ success: true, message: "密碼已重設成功！" });
+    } catch (error) {
+        console.error("Error resetting password: ", error);
+        res.status(500).json({ success: false, message: "伺服器錯誤" });
+    }
+});
+
+
+
+  export default router;
