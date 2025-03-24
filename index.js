@@ -76,6 +76,7 @@ app.use("/activity-create", activityCreateRouter);
 app.use("/ecpay-test-only", ecpayRouter);
 app.use("/orders", ordersRouter);
 
+
 app.get("/", (req, res) => {
   res.locals.title = "首頁 - " + res.locals.title;
   res.locals.pageName = "home";
@@ -224,16 +225,29 @@ app.get("/logout", async (req, res) => {
   res.redirect("/");
 });
 
+// 測試用登入假帳號
+app.get("/fake-login/:email", async (req, res) => {
+  const email = req.params.email.trim().toLowerCase();
+  const sql = `SELECT * FROM members WHERE email = ?`;
+  const [rows] = await db.query(sql, [email]);
 
-/*
-// react project
-app.use("/", express.static("build"));
-app.get("*", (req, res) => {
-  res.send(
-    `<!doctype html><html lang="zh"><head><meta charset="utf-8"/><link rel="icon" href="/favicon.ico"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="theme-color" content="#000000"/><meta name="description" content="Shinder react hooks"/><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css"/><title>Shinder react hooks</title><script defer="defer" src="/static/js/main.6a205622.js"></script></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id="root"></div></body></html>`
-  );
+  if (!rows.length) {
+    return res.status(404).send("查無此帳號");
+  }
+
+  const user = rows[0];
+
+  // 模擬登入，把資料塞進 session.admin
+  req.session.admin = {
+    email: user.email,
+    id: user.id,
+    name: user.name,
+  };
+
+  res.send(`成功模擬登入：${user.name}`);
 });
-*/
+
+
 // ************** 404 要在所有的路由之後 ****************
 app.use((req, res) => {
   res.status(404).send(`<h1>您走錯路了</h1>
