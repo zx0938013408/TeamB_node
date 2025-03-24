@@ -14,6 +14,8 @@ import cityRouter from "./routes/city.js"
 import pdRouter from "./routes/products.js"
 import authRouter from "./routes/auth.js"
 import activityCreateRouter from "./routes/activity-create.js"
+import ecpayRouter from "./routes/ecpay-test-only.js"
+import ordersRouter from "./routes/orders.js"
 
 
 const MysqlStore = mysql_session(session);
@@ -71,6 +73,9 @@ app.use("/city-area", cityRouter);
 app.use("/products", pdRouter);
 app.use('/auth',authRouter);
 app.use("/activity-create", activityCreateRouter);
+app.use("/ecpay-test-only", ecpayRouter);
+app.use("/orders", ordersRouter);
+
 
 app.get("/", (req, res) => {
   res.locals.title = "首頁 - " + res.locals.title;
