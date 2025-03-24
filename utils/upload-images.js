@@ -11,7 +11,7 @@ const extMap = {
 };
 
 // 確保圖片存放的目錄存在
-const uploadDir = "public/imgs/";
+const uploadDir = "public/imgs";
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }

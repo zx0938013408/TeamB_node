@@ -4,7 +4,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import upload from "../utils/upload-images.js";
 import multer from "multer";
-
+import { log } from "console";
 
 
 const router = express.Router();
