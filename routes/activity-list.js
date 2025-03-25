@@ -4,6 +4,8 @@ import fs from "node:fs/promises";
 import { z } from "zod";
 import db from "../utils/connect-mysql.js";
 import upload from "../utils/upload-images.js";
+import jwt from 'jsonwebtoken';
+
 
 const router = express.Router();
 const dateFormat = "YYYY-MM-DDTHH:mm";
@@ -653,26 +655,36 @@ router.put("/api/:al_id", upload.single("avatar"), async (req, res) => {
 
 // 加入最愛功能
 router.post("/api/favorite", async (req, res) => {
-  const memberId = req.session.admin?.id;
-  const { activityId } = req.body;
-
-  if (!memberId || !activityId) {
-    return res.status(400).json({ success: false, error: "缺少參數" });
+  const token = req.header('Authorization')?.split(' ')[1]; // 從 Authorization 標頭中獲取 token
+  
+  if (!token) {
+    return res.status(401).json({ success: false, error: "未提供有效的Token" });
   }
 
   try {
+    const decoded = jwt.verify(token, process.env.JWT_KEY); // 驗證 token
+    const memberId = decoded.id;  // 使用解碼後的 `id` 作為 memberId
+    const { activityId } = req.body;
+
+    if (!activityId) {
+      return res.status(400).json({ success: false, error: "缺少參數" });
+    }
+
+    // 從資料庫中檢查該用戶是否已經喜歡該活動
     const checkSql = "SELECT * FROM favorites WHERE member_id = ? AND activity_id = ?";
     const [rows] = await db.query(checkSql, [memberId, activityId]);
 
     if (rows.length > 0) {
+      // 如果已經喜歡，則取消喜歡
       await db.query("DELETE FROM favorites WHERE member_id = ? AND activity_id = ?", [memberId, activityId]);
       return res.json({ success: true, liked: false });
     } else {
+      // 如果未喜歡，則新增最愛
       await db.query("INSERT INTO favorites (member_id, activity_id) VALUES (?, ?)", [memberId, activityId]);
       return res.json({ success: true, liked: true });
     }
   } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
+    return res.status(401).json({ success: false, error: "Token 驗證失敗" });
   }
 });
 
