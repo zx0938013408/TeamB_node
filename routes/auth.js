@@ -523,51 +523,10 @@ router.get("/jwt-data", (req, res) => {
   });
 
 
-  //會員資料
-//   router.get('/api-profile', async (req, res) => {
-//     const token = req.headers['authorization']?.split(' ')[1];
-//     if (!token) {
-//       return res.status(401).json({ success: false, message: '未登入或 Token 過期' });
-//     }
-  
-//     try {
-//       const decoded = jwt.verify(token, process.env.JWT_KEY);
-//       const sql = `SELECT
-//   members.id,
-//   members.name,
-//   members.gender,
-//   members.birthday_date,
-//   members.city_id,
-//     citys.city_name as city,
-//       areas.name as area,
-//   members.address,
-//   members.phone,
-//   members.email,
-//   members.photo_url AS avatar,
-//   GROUP_CONCAT(sport_type.sport_name SEPARATOR ', ') AS sports
-// FROM members
-// LEFT JOIN citys ON citys.city_id = members.city_id
-// LEFT JOIN areas ON areas.area_id = members.area_id
-// LEFT JOIN member_sports ON members.id = member_sports.member_id
-// LEFT JOIN sport_type ON member_sports.sport_id = sport_type.id
-// WHERE members.id = ?
-// GROUP BY members.id;
-// `;
-//       const [rows] = await db.query(sql, [decoded.id]);
-  
-//       if (rows.length > 0) {
-//         const user = rows[0];
-//         res.json({ success: true, data: user });
-//       } else {
-//         res.status(404).json({ success: false, error: '用戶資料不存在' });
-//       }
-//     } catch (err) {
-//       res.status(400).json({ success: false, error: '無效的 Token' });
-//     }
-//   });
 
 
-  // 修改會員資料 API
+
+  // 修改會員資料  API
 router.put('/user-edit', upload.single('avatar'), async (req, res) => {
     // 驗證是否存在 JWT token
     const token = req.headers['authorization']?.split(' ')[1]; // 取得 JWT Token
