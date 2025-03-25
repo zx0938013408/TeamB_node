@@ -16,6 +16,7 @@ import authRouter from "./routes/auth.js"
 import activityCreateRouter from "./routes/activity-create.js"
 import ecpayRouter from "./routes/ecpay-test-only.js"
 import ordersRouter from "./routes/orders.js"
+import courtRouter from "./routes/court.js"
 
 
 const MysqlStore = mysql_session(session);
@@ -77,6 +78,8 @@ app.use('/auth',authRouter);
 app.use("/activity-create", activityCreateRouter);
 app.use("/ecpay-test-only", ecpayRouter);
 app.use("/orders", ordersRouter);
+app.use("/court", courtRouter);
+
 
 
 app.get("/", (req, res) => {
