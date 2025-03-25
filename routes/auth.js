@@ -207,8 +207,6 @@ router.put('/update/password/:id', async (req, res) => {
 
 
 
-
-
 //獲得單筆會員資料
 router.get('/members/api/:id', async (req, res) => {
   try {
@@ -427,8 +425,6 @@ router.post("/api/register", upload.single("avatar"), async (req, res) => {
 
 
 
-
-
 // 登出
 router.get("/logout", async (req, res) => {
     delete req.session.admin;
@@ -518,6 +514,8 @@ GROUP BY members.id;`;
   res.json(output);
 });
 
+
+
 router.get("/jwt-data", (req, res) => {
     res.json(req.my_jwt);
   });
@@ -526,7 +524,7 @@ router.get("/jwt-data", (req, res) => {
 
 
 
-  // 修改會員資料  API
+  // 修改會員資料 API
 router.put('/user-edit', upload.single('avatar'), async (req, res) => {
     // 驗證是否存在 JWT token
     const token = req.headers['authorization']?.split(' ')[1]; // 取得 JWT Token
@@ -649,11 +647,15 @@ router.post('/api/check-old-password', checkAuth, async (req, res) => {
   const isOldPasswordValid = await bcrypt.compare(oldPassword, user.password_hashed);
 
   if (!isOldPasswordValid) {
-    return res.status(400).json({ success: false, message: '舊密碼錯誤' });
+    return res.status(400).json({ success: false, message: '原始密碼錯誤' });
   }
 
   return res.json({ success: true });
 });
+
+
+
+
 
 
 //會員改密碼
@@ -703,6 +705,56 @@ router.post('/api/change-password', checkAuth, async (req, res) => {
     res.status(500).json({ message: '伺服器錯誤' });
   }
 });
+
+
+//忘記密碼：設定密碼
+router.post("/api/verify-user", async (req, res) => {
+  const { email, school, id_card } = req.body;
+
+  try {
+    const [rows] = await db.query(
+      "SELECT id FROM members WHERE email = ? AND school = ? AND id_card = ?",
+      [email, school, id_card]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ message: "資料不正確，請確認後再試" });
+    }
+
+    const token = jwt.sign({ id: rows[0].id }, process.env.JWT_KEY, { expiresIn: "15m" });
+
+    res.json({ token });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "伺服器錯誤" });
+  }
+});
+
+
+
+//會員更改密碼
+router.post("/api/reset-password", async (req, res) => {
+  const { token, newPassword } = req.body;
+
+  if (!token || !newPassword) {
+    return res.status(400).json({ message: "缺少必要資訊" });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_KEY);
+    const hashed = await bcrypt.hash(newPassword, 10);
+
+    await db.query("UPDATE members SET password_hashed = ? WHERE id = ?", [hashed, decoded.id]);
+
+    res.json({ message: "密碼重設成功" });
+  } catch (err) {
+    console.error(err);
+    res.status(400).json({ message: "Token 無效或過期" });
+  }
+});
+
+
+
 
 
 
