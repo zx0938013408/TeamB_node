@@ -128,33 +128,49 @@ const abSchema = z.object({
 //
 //取得通訊錄清單
 const getListData = async (req) => {
-  const memberId = req.session.admin?.id;
+  let memberId = null;
+
+  // ✅ 嘗試從 JWT Token 解出 memberId
+  const authHeader = req.headers.authorization;
+  if (authHeader?.startsWith("Bearer ")) {
+    const token = authHeader.split(" ")[1];
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_KEY);
+      memberId = decoded.id;
+      console.log("JWT 解出的會員ID:", memberId);
+    } catch (err) {
+      console.log("JWT 驗證失敗:", err.message);
+    }
+  }
+
+  // ✅ 備援：若沒 token，試試看 session
+  if (!memberId && req.session.admin) {
+    memberId = req.session.admin.id;
+    console.log("從 session 取得會員ID:", memberId);
+  }
+
   const output = {
     success: false,
-    redirect: undefined, // 提示頁面要做跳轉
+    redirect: undefined,
     perPage: 30,
     totalRows: 0,
     totalPages: 0,
     page: 0,
     rows: [],
     keyword: "",
-    sportTypes: [], // 加入 sportTypes
-    areas: [], // 加入 areas
+    sportTypes: [],
+    areas: [],
   };
-  output.sportTypes = await getSportTypes(); // <<-- 這行新增
-  // 會員的編號
-  //const member_id = req.session.admin?.member.id || 0;
-  //
-  // 取得GET 參數
+
+  output.sportTypes = await getSportTypes();
   const perPage = output.perPage;
   let page = +req.query.page || 1;
   let keyword = req.query.keyword ? req.query.keyword.trim() : "";
   let activity_time_begin = req.query.activity_time_begin || "";
   let activity_time_end = req.query.activity_time_end || "";
   let sortField = req.query.sortField || "al_id";
-  let sortRule = req.query.sortRule || "desc"; // asc, desc
-  //
-  // 設定排序條件
+  let sortRule = req.query.sortRule || "desc";
+
   let orderBy = "";
   switch (sortField + "-" + sortRule) {
     default:
@@ -171,11 +187,10 @@ const getListData = async (req) => {
       orderBy = ` ORDER BY al.activity_time ASC `;
       break;
   }
-  //
-  // 組合 Where 條件
+
   let where = ` WHERE 1 `;
   if (keyword) {
-    output.keyword = keyword; // 要輸出給 EJS
+    output.keyword = keyword;
     let keyword_ = db.escape(`%${keyword}%`);
     where += ` AND (al.activity_name LIKE ${keyword_}) `;
   }
@@ -191,67 +206,61 @@ const getListData = async (req) => {
       where += ` AND al.activity_time <= '${end.format(dateFormat)}' `;
     }
   }
-  //
-  // 處理分頁錯誤
+
   if (page < 1) {
     output.redirect = `?page=1`;
     return output;
   }
-  //
-  // 查詢總筆數
-  const t_sql = `SELECT COUNT(1) AS totalRows 
-  FROM activity_list al ${where} `;
-  const [[{ totalRows }]] = await db.query(t_sql); // 取得總筆數
+
+  const t_sql = `SELECT COUNT(1) AS totalRows FROM activity_list al ${where}`;
+  const [[{ totalRows }]] = await db.query(t_sql);
   const totalPages = Math.ceil(totalRows / perPage);
   let rows = [];
-  //
-  // 確保page不超出範圍
+
   if (totalRows) {
     if (page > totalPages) {
       output.redirect = `?page=${totalPages}`;
       return output;
     }
   }
-  //
-  // 查詢資料 (依各自資料庫資料顯示需求更改下列)
-  const sql = `SELECT  
-  al.al_id, 
-  al.activity_name, 
-  st.sport_name, 
-  a.name AS area_name, 
-  ci.address,
-  ci.name AS court_name,
-  al.activity_time, 
-  al.deadline, 
-  al.payment, 
-  al.need_num, 
-  al.introduction,
-  m.name, 
-  al.create_time,
-  al.update_time,
-  al.avatar,
-  IFNULL(SUM(r.num), 0) AS registered_people,
-  IF(f.id IS NULL, 0, 1) AS is_favorite
-FROM activity_list al
-JOIN sport_type st ON al.sport_type_id = st.id
-JOIN areas a ON al.area_id = a.area_id
-JOIN court_info ci ON al.court_id = ci.id
-JOIN members m ON al.founder_id = m.id
-LEFT JOIN registered r ON al.al_id = r.activity_id
-LEFT JOIN favorites f ON f.activity_id = al.al_id AND f.member_id = ?
-${where}
-GROUP BY 
-  al.al_id, al.activity_name, st.sport_name, a.name, ci.address, ci.name,
-  al.activity_time, al.deadline, al.payment, al.need_num, al.introduction,
-  m.name, al.create_time, al.update_time, al.avatar, f.id
-${orderBy}
-LIMIT ${(page - 1) * perPage}, ${perPage}
-`;
 
-[rows] = await db.query(sql, [memberId]);
-  
-  //
-  // 格式化活動日期(各自資料庫有時間設定的需求改寫下列)
+  const sql = `
+    SELECT  
+      al.al_id, 
+      al.activity_name, 
+      st.sport_name, 
+      a.name AS area_name, 
+      ci.address,
+      ci.name AS court_name,
+      al.activity_time, 
+      al.deadline, 
+      al.payment, 
+      al.need_num, 
+      al.introduction,
+      m.name, 
+      al.create_time,
+      al.update_time,
+      al.avatar,
+      IFNULL(SUM(r.num), 0) AS registered_people,
+      IF(f.id IS NULL, 0, 1) AS is_favorite
+    FROM activity_list al
+    JOIN sport_type st ON al.sport_type_id = st.id
+    JOIN areas a ON al.area_id = a.area_id
+    JOIN court_info ci ON al.court_id = ci.id
+    JOIN members m ON al.founder_id = m.id
+    LEFT JOIN registered r ON al.al_id = r.activity_id
+    LEFT JOIN favorites f ON f.activity_id = al.al_id AND f.member_id = ?
+    ${where}
+    GROUP BY 
+      al.al_id, al.activity_name, st.sport_name, a.name, ci.address, ci.name,
+      al.activity_time, al.deadline, al.payment, al.need_num, al.introduction,
+      m.name, al.create_time, al.update_time, al.avatar, f.id
+    ${orderBy}
+    LIMIT ${(page - 1) * perPage}, ${perPage}
+  `;
+
+  [rows] = await db.query(sql, [memberId]);
+
   rows.forEach((r) => {
     const b = moment(r.activity_time);
     r.activity_time = b.isValid() ? b.format("YYYY-MM-DD HH:mm") : "";
@@ -262,22 +271,18 @@ LIMIT ${(page - 1) * perPage}, ${perPage}
     const u = moment(r.update_time);
     r.update_time = u.isValid() ? u.format("YYYY-MM-DD HH:mm") : "";
 
-    // 安全處理 payment，確保它是數字
     if (r.payment !== null && r.payment !== undefined) {
-      r.payment = parseFloat(r.payment); // 確保是數字
+      r.payment = parseFloat(r.payment);
       r.payment = Number.isInteger(r.payment)
         ? r.payment.toString()
         : r.payment.toFixed(2);
     }
-    rows.forEach((r) => {
-      if (!r.avatar) {
-          r.avatar = `/TeamB-logo-greenYellow.png`;
-      }
+
+    if (!r.avatar) {
+      r.avatar = `/TeamB-logo-greenYellow.png`;
+    }
   });
-  
-  });
-  //
-  // 回傳結果
+
   return { ...output, totalRows, totalPages, page, rows, success: true };
 };
 //
