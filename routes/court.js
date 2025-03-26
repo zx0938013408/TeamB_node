@@ -12,7 +12,7 @@ router.get("/api", async (req, res) => {
       const sql = `
         SELECT DISTINCT
             court_info.id court_id,
-            court_info.name,
+            court_info.name court_name,
             sport_type.id sport_type_id,
             sport_type.sport_name,
             court_info.area_id,

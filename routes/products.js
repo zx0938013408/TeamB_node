@@ -74,6 +74,7 @@ const getListData = async (req) => {
     page: 0,
     rows: [],
     keyword: "",
+    category:"",
   };
 
   // 會員的編號
@@ -84,10 +85,11 @@ const getListData = async (req) => {
   const perPage = output.perPage;
   let page = +req.query.page || 1;
   let keyword = req.query.keyword ? req.query.keyword.trim() : "";
-  let price_lowest = parseFloat(req.query.price_lowest) || 0;
-  let price_highest = parseFloat(req.query.price_highest) || Infinity;
-  let category_id = parseInt(req.query.category_id) || null; // 新增分類篩選
-  let sportType = req.query.sports ? req.query.sports.trim() : ""; // 新增運動類別篩選
+  let category = req.query.category;
+  // let price_lowest = parseFloat(req.query.price_lowest) || 0;
+  // let price_highest = parseFloat(req.query.price_highest) || Infinity;
+  //let category_id = parseInt(req.query.category_id) || null; // 新增分類篩選
+  //let sportType = req.query.sports ? req.query.sports.trim() : ""; // 新增運動類別篩選
   let sortField = req.query.sortField || "id";
   let sortRule = req.query.sortRule || "asc"; // asc, desc
 
@@ -111,32 +113,32 @@ const getListData = async (req) => {
 
   // 組合 Where 條件
   let where = ` WHERE 1 `;
-  let params = [];
+  // let params = [];
   if (keyword) {
     output.keyword = keyword; // 要輸出給 EJS
     let keyword_ = db.escape(`%${keyword}%`); // 防止 SQL 注入
-    where += ` AND (pd.product_name LIKE ? OR pd.product_description LIKE ?) `;
-    params.push(`%${keyword_}%`, `%${keyword_}%`);
+    where += ` AND (pd.product_name LIKE ${keyword_} OR pd.product_description LIKE ${keyword_}) `;
+    // params.push(`%${keyword_}%`, `%${keyword_}%`);
   }
 
-  if (!isNaN(price_lowest) && price_lowest > 0) {
-    where += ` AND pd.price >= ? `;
-    params.push(price_lowest);
-  }
+  // if (!isNaN(price_lowest) && price_lowest > 0) {
+  //   where += ` AND pd.price >= ? `;
+  //   params.push(price_lowest);
+  // }
 
-  if (!isNaN(price_highest) && price_highest < Infinity) {
-    where += ` AND pd.price <= ? `;
-    params.push(price_highest);
-  }
+  // if (!isNaN(price_highest) && price_highest < Infinity) {
+  //   where += ` AND pd.price <= ? `;
+  //   params.push(price_highest);
+  // }
 
-  if (category_id) {
-    where += ` AND pd.category_id = ? `;
-    params.push(category_id);
-  }
-  if (sportType) {
-    where += ` AND pd.sports = ? `;
-    params.push(sportType);
-  }
+  // if (category) {
+  //   where += ` AND pd.category_id = ? `;
+  //   params.push(category_id);
+  // }
+  // if (sportType) {
+  //   where += ` AND pd.sports = ? `;
+  //   params.push(sportType);
+  // }
 
   // 處理分頁錯誤
   if (page < 1) {
@@ -147,7 +149,7 @@ const getListData = async (req) => {
   // 查詢總筆數
   const t_sql = `SELECT COUNT(1) AS totalRows 
    FROM products pd ${where} `;
-  const [[{ totalRows }]] = await db.query(t_sql, params); // 取得總筆數
+  const [[{ totalRows }]] = await db.query(t_sql); // 取得總筆數
   const totalPages = Math.ceil(totalRows / perPage);
   let rows = [];
 
@@ -169,8 +171,9 @@ const getListData = async (req) => {
   ${orderBy}
   LIMIT ?, ?`;
 
-  params.unshift(member_id, (page - 1) * perPage, perPage);
-  [rows] = await db.query(sql, params);
+  [rows] = await db.query(sql, [member_id, (page - 1) * perPage, perPage]);
+  // params.unshift(member_id, (page - 1) * perPage, perPage);
+  // [rows] = await db.query(sql, params);
 
   // 回傳結果
   return { ...output, totalRows, totalPages, page, rows, success: true };
@@ -248,15 +251,15 @@ pdRouter.get("/api", async (req, res) => {
 
 // 取得單筆資料
 pdRouter.get("/api/:pd_id", async (req, res) => {
-  console.log("API 被呼叫了，id:", req.params.pd_id);
-  const output = await getItemById(req.params.pd_id);
+  console.log("API 被呼叫了，id:", req.pd_id);
+  const output = await getItemById(req.pd_id);
   console.log("API 回傳資料:", output);
   return res.json(output);
 });
 
 // 刪除資料
 pdRouter.delete("/api/:pd_id", async (req, res) => {
-  const pd_id = parseInt(req.params.pd_id, 10);
+  const pd_id = parseInt(req.pd_id, 10);
   if (!pd_id || pd_id < 1) {
     return res.json({ success: false, error: "無效的商品 ID" });
   }
@@ -279,7 +282,7 @@ pdRouter.delete("/api/:pd_id", async (req, res) => {
 pdRouter.post("/api/edit/:id", async (req, res) => {
   const output = {
     success: false,
-    pd_id: req.params.id,
+    pd_id: req.id,
     error: "",
   };
 
@@ -318,7 +321,7 @@ pdRouter.post("/api/edit/:id", async (req, res) => {
       size,
       color,
       inventory,
-      req.params.pd_id,
+      req.pd_id,
     ]);
 
     output.success = !!result.affectedRows;
@@ -345,7 +348,7 @@ pdRouter.put("/api/:id", upload.single("image"), async (req, res) => {
     success,
     error,
     data: originalData,
-  } = await getItemById(req.params.id);
+  } = await getItemById(req.id);
   if (!success) {
     output.error = error;
     return res.json(output);
