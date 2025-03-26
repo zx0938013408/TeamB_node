@@ -8,6 +8,7 @@ headers.txt
 package-lock.json
 
 tmp_uploads
+public/imgs
 
 
 # Node artifact files
