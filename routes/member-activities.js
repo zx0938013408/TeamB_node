@@ -14,21 +14,30 @@ router.get("/:memberId/activities", async (req, res) => {
   try {
     const [rows] = await db.query(
       `SELECT 
-        a.al_id,
-        a.activity_name,
-        a.activity_time,
-        a.introduction,
-        a.deadline,
-        a.avatar,
-        st.sport_name,
-        IF(f.id IS NOT NULL, true, false) AS is_favorite
-      FROM registered r
-      JOIN activity_list a ON r.activity_id = a.al_id
-      JOIN sport_type st ON a.sport_type_id = st.id
-      LEFT JOIN favorites f ON f.activity_id = a.al_id AND f.member_id = ?
-      WHERE r.member_id = ?`,
+    a.al_id,
+    a.activity_name,
+    a.activity_time,
+    a.introduction,
+    a.deadline,
+    a.avatar,
+    a.need_num,
+    a.payment,
+    m.name AS name,
+    st.sport_name,
+    ci.name AS court_name,
+    IFNULL(SUM(r1.num), 0) AS registered_people,
+    IF(f.id IS NOT NULL, true, false) AS is_favorite
+FROM registered r1
+JOIN activity_list a ON r1.activity_id = a.al_id
+JOIN sport_type st ON a.sport_type_id = st.id
+JOIN court_info ci ON a.court_id = ci.id
+JOIN members m ON a.founder_id = m.id
+LEFT JOIN registered r2 ON a.al_id = r2.activity_id
+LEFT JOIN favorites f ON f.activity_id = a.al_id AND f.member_id = ?
+WHERE r1.member_id = ?
+GROUP BY a.al_id
+`,
       [memberId, memberId]
-
     );
     // 格式化時間為 YYYY-MM-DD HH:mm
     rows.forEach((activity) => {
@@ -129,6 +138,7 @@ router.get("/:memberId/favorites", async (req, res) => {
         al.deadline,
         al.payment,
         al.need_num,
+        m.name AS name,
         IFNULL(SUM(r.num), 0) AS registered_people,
         st.sport_name,
         ci.name AS court_name,
@@ -137,6 +147,7 @@ router.get("/:memberId/favorites", async (req, res) => {
       JOIN activity_list al ON f.activity_id = al.al_id
       JOIN sport_type st ON al.sport_type_id = st.id
       JOIN court_info ci ON al.court_id = ci.id
+      JOIN members m ON al.founder_id = m.id
       LEFT JOIN registered r ON al.al_id = r.activity_id
       WHERE f.member_id = ?
       GROUP BY al.al_id, al.activity_name, st.sport_name, ci.name
@@ -167,11 +178,11 @@ router.get("/:memberId/favorites", async (req, res) => {
 function formatDateTime(dateTime) {
   const date = new Date(dateTime);
   const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-  
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+
   return `${year}-${month}-${day} ${hours}:${minutes}`;
 }
 
