@@ -16,6 +16,7 @@ router.get("/api", async (req, res) => {
             sport_type.id sport_type_id,
             sport_type.sport_name,
             court_info.area_id,
+            citys.city_id,
             citys.city_name,
             areas.name area_name,
             court_info.address,
