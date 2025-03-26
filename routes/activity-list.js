@@ -4,6 +4,8 @@ import fs from "node:fs/promises";
 import { z } from "zod";
 import db from "../utils/connect-mysql.js";
 import upload from "../utils/upload-images.js";
+import jwt from 'jsonwebtoken';
+
 
 const router = express.Router();
 const dateFormat = "YYYY-MM-DDTHH:mm";
@@ -21,47 +23,49 @@ const removeUploadedImg = async (file) => {
 };
 //
 // 取得單筆活動資訊
-const getItemById = async (id) => {
+const getItemById = async (id, memberId = null) => {
   const output = {
     success: false,
     data: null,
     error: "",
   };
-  const al_id = parseInt(id); // 轉換成整數
+
+  const al_id = parseInt(id);
   if (!al_id || al_id < 1) {
     output.error = "錯誤的編號";
     return output;
   }
+
   const r_sql = `
     SELECT al.*, 
-    st.sport_name, 
-    a.name AS area_name, 
-    ci.name AS court_name,
-    ci.address, 
-    m.name AS name,
-    IFNULL(SUM(r.num), 0) AS registered_people
+      st.sport_name, 
+      a.name AS area_name, 
+      ci.name AS court_name,
+      ci.address, 
+      m.name AS name,
+      IFNULL(SUM(r.num), 0) AS registered_people,
+      IF(f.id IS NULL, 0, 1) AS is_favorite
     FROM activity_list al
     JOIN sport_type st ON al.sport_type_id = st.id
     JOIN areas a ON al.area_id = a.area_id
     JOIN court_info ci ON al.court_id = ci.id
     JOIN members m ON al.founder_id = m.id
     LEFT JOIN registered r ON al.al_id = r.activity_id
+    LEFT JOIN favorites f ON f.activity_id = al.al_id AND f.member_id = ?
     WHERE al.al_id = ?
     GROUP BY 
-      al.al_id,
-      st.sport_name,
-      a.name,
-      ci.name,
-      ci.address,
-      m.name`;
-  const [rows] = await db.query(r_sql, [al_id]);
+      al.al_id, st.sport_name, a.name, ci.name, ci.address, m.name, f.id
+  `;
+
+  const [rows] = await db.query(r_sql, [memberId, al_id]);
+
   if (!rows.length) {
     output.error = "沒有該筆資料";
     return output;
   }
 
   const item = rows[0];
-  // 格式化時間欄位（根據需要調整格式）
+
   if (item.activity_time) {
     item.activity_time = moment(item.activity_time).format("YYYY-MM-DD HH:mm");
   }
@@ -74,22 +78,19 @@ const getItemById = async (id) => {
   if (item.update_time) {
     item.update_time = moment(item.update_time).format("YYYY-MM-DD HH:mm");
   }
-  // 安全處理 payment，確保它是數字
+
   if (item.payment !== null && item.payment !== undefined) {
-    item.payment = parseFloat(item.payment); // 確保是數字
+    item.payment = parseFloat(item.payment);
     item.payment = Number.isInteger(item.payment)
       ? item.payment.toString()
       : item.payment.toFixed(2);
   }
-  //處理照片路徑
-  if (item.avatar) {
-    item.avatar = `${item.avatar}`;
-}
 
   output.data = item;
   output.success = true;
   return output;
 };
+
 //
 // 取得運動類型
 const getSportTypes = async () => {
@@ -126,33 +127,49 @@ const abSchema = z.object({
 //
 //取得通訊錄清單
 const getListData = async (req) => {
-  const memberId = req.session.admin?.id;
+  let memberId = null;
+
+  // ✅ 嘗試從 JWT Token 解出 memberId
+  const authHeader = req.headers.authorization;
+  if (authHeader?.startsWith("Bearer ")) {
+    const token = authHeader.split(" ")[1];
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_KEY);
+      memberId = decoded.id;
+      console.log("JWT 解出的會員ID:", memberId);
+    } catch (err) {
+      console.log("JWT 驗證失敗:", err.message);
+    }
+  }
+
+  // ✅ 備援：若沒 token，試試看 session
+  if (!memberId && req.session.admin) {
+    memberId = req.session.admin.id;
+    console.log("從 session 取得會員ID:", memberId);
+  }
+
   const output = {
     success: false,
-    redirect: undefined, // 提示頁面要做跳轉
+    redirect: undefined,
     perPage: 30,
     totalRows: 0,
     totalPages: 0,
     page: 0,
     rows: [],
     keyword: "",
-    sportTypes: [], // 加入 sportTypes
-    areas: [], // 加入 areas
+    sportTypes: [],
+    areas: [],
   };
-  output.sportTypes = await getSportTypes(); // <<-- 這行新增
-  // 會員的編號
-  //const member_id = req.session.admin?.member.id || 0;
-  //
-  // 取得GET 參數
+
+  output.sportTypes = await getSportTypes();
   const perPage = output.perPage;
   let page = +req.query.page || 1;
   let keyword = req.query.keyword ? req.query.keyword.trim() : "";
   let activity_time_begin = req.query.activity_time_begin || "";
   let activity_time_end = req.query.activity_time_end || "";
   let sortField = req.query.sortField || "al_id";
-  let sortRule = req.query.sortRule || "desc"; // asc, desc
-  //
-  // 設定排序條件
+  let sortRule = req.query.sortRule || "desc";
+
   let orderBy = "";
   switch (sortField + "-" + sortRule) {
     default:
@@ -169,11 +186,10 @@ const getListData = async (req) => {
       orderBy = ` ORDER BY al.activity_time ASC `;
       break;
   }
-  //
-  // 組合 Where 條件
+
   let where = ` WHERE 1 `;
   if (keyword) {
-    output.keyword = keyword; // 要輸出給 EJS
+    output.keyword = keyword;
     let keyword_ = db.escape(`%${keyword}%`);
     where += ` AND (al.activity_name LIKE ${keyword_}) `;
   }
@@ -189,67 +205,61 @@ const getListData = async (req) => {
       where += ` AND al.activity_time <= '${end.format(dateFormat)}' `;
     }
   }
-  //
-  // 處理分頁錯誤
+
   if (page < 1) {
     output.redirect = `?page=1`;
     return output;
   }
-  //
-  // 查詢總筆數
-  const t_sql = `SELECT COUNT(1) AS totalRows 
-  FROM activity_list al ${where} `;
-  const [[{ totalRows }]] = await db.query(t_sql); // 取得總筆數
+
+  const t_sql = `SELECT COUNT(1) AS totalRows FROM activity_list al ${where}`;
+  const [[{ totalRows }]] = await db.query(t_sql);
   const totalPages = Math.ceil(totalRows / perPage);
   let rows = [];
-  //
-  // 確保page不超出範圍
+
   if (totalRows) {
     if (page > totalPages) {
       output.redirect = `?page=${totalPages}`;
       return output;
     }
   }
-  //
-  // 查詢資料 (依各自資料庫資料顯示需求更改下列)
-  const sql = `SELECT  
-  al.al_id, 
-  al.activity_name, 
-  st.sport_name, 
-  a.name AS area_name, 
-  ci.address,
-  ci.name AS court_name,
-  al.activity_time, 
-  al.deadline, 
-  al.payment, 
-  al.need_num, 
-  al.introduction,
-  m.name, 
-  al.create_time,
-  al.update_time,
-  al.avatar,
-  IFNULL(SUM(r.num), 0) AS registered_people,
-  IF(f.id IS NULL, 0, 1) AS is_favorite
-FROM activity_list al
-JOIN sport_type st ON al.sport_type_id = st.id
-JOIN areas a ON al.area_id = a.area_id
-JOIN court_info ci ON al.court_id = ci.id
-JOIN members m ON al.founder_id = m.id
-LEFT JOIN registered r ON al.al_id = r.activity_id
-LEFT JOIN favorites f ON f.activity_id = al.al_id AND f.member_id = ?
-${where}
-GROUP BY 
-  al.al_id, al.activity_name, st.sport_name, a.name, ci.address, ci.name,
-  al.activity_time, al.deadline, al.payment, al.need_num, al.introduction,
-  m.name, al.create_time, al.update_time, al.avatar, f.id
-${orderBy}
-LIMIT ${(page - 1) * perPage}, ${perPage}
-`;
 
-[rows] = await db.query(sql, [memberId]);
-  
-  //
-  // 格式化活動日期(各自資料庫有時間設定的需求改寫下列)
+  const sql = `
+    SELECT  
+      al.al_id, 
+      al.activity_name, 
+      st.sport_name, 
+      a.name AS area_name, 
+      ci.address,
+      ci.name AS court_name,
+      al.activity_time, 
+      al.deadline, 
+      al.payment, 
+      al.need_num, 
+      al.introduction,
+      m.name, 
+      al.create_time,
+      al.update_time,
+      al.avatar,
+      IFNULL(SUM(r.num), 0) AS registered_people,
+      IF(f.id IS NULL, 0, 1) AS is_favorite
+    FROM activity_list al
+    JOIN sport_type st ON al.sport_type_id = st.id
+    JOIN areas a ON al.area_id = a.area_id
+    JOIN court_info ci ON al.court_id = ci.id
+    JOIN members m ON al.founder_id = m.id
+    LEFT JOIN registered r ON al.al_id = r.activity_id
+    LEFT JOIN favorites f ON f.activity_id = al.al_id AND f.member_id = ?
+    ${where}
+    GROUP BY 
+      al.al_id, al.activity_name, st.sport_name, a.name, ci.address, ci.name,
+      al.activity_time, al.deadline, al.payment, al.need_num, al.introduction,
+      m.name, al.create_time, al.update_time, al.avatar, f.id
+    ${orderBy}
+    LIMIT ${(page - 1) * perPage}, ${perPage}
+  `;
+
+  [rows] = await db.query(sql, [memberId]);
+
   rows.forEach((r) => {
     const b = moment(r.activity_time);
     r.activity_time = b.isValid() ? b.format("YYYY-MM-DD HH:mm") : "";
@@ -260,22 +270,18 @@ LIMIT ${(page - 1) * perPage}, ${perPage}
     const u = moment(r.update_time);
     r.update_time = u.isValid() ? u.format("YYYY-MM-DD HH:mm") : "";
 
-    // 安全處理 payment，確保它是數字
     if (r.payment !== null && r.payment !== undefined) {
-      r.payment = parseFloat(r.payment); // 確保是數字
+      r.payment = parseFloat(r.payment);
       r.payment = Number.isInteger(r.payment)
         ? r.payment.toString()
         : r.payment.toFixed(2);
     }
-    rows.forEach((r) => {
-      if (!r.avatar) {
-          r.avatar = `/TeamB-logo-greenYellow.png`;
-      }
+
+    if (!r.avatar) {
+      r.avatar = `/TeamB-logo-greenYellow.png`;
+    }
   });
-  
-  });
-  //
-  // 回傳結果
+
   return { ...output, totalRows, totalPages, page, rows, success: true };
 };
 //
@@ -377,9 +383,19 @@ router.get("/api", async (req, res) => {
 //
 // 取得單筆資料
 router.get("/api/:al_id", async (req, res) => {
-  console.log("API 被呼叫了，al_id:", req.params.al_id);
-  const output = await getItemById(req.params.al_id);
-  console.log("API 回傳資料:", output);
+  const token = req.headers?.authorization?.split(" ")[1];
+  let memberId = null;
+
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_KEY);
+      memberId = decoded.id;
+    } catch (err) {
+      console.log("JWT 解析失敗:", err.message);
+    }
+  }
+
+  const output = await getItemById(req.params.al_id, memberId);
   return res.json(output);
 });
 //
@@ -653,26 +669,36 @@ router.put("/api/:al_id", upload.single("avatar"), async (req, res) => {
 
 // 加入最愛功能
 router.post("/api/favorite", async (req, res) => {
-  const memberId = req.session.admin?.id;
-  const { activityId } = req.body;
-
-  if (!memberId || !activityId) {
-    return res.status(400).json({ success: false, error: "缺少參數" });
+  const token = req.header('Authorization')?.split(' ')[1]; // 從 Authorization 標頭中獲取 token
+  
+  if (!token) {
+    return res.status(401).json({ success: false, error: "未提供有效的Token" });
   }
 
   try {
+    const decoded = jwt.verify(token, process.env.JWT_KEY); // 驗證 token
+    const memberId = decoded.id;  // 使用解碼後的 `id` 作為 memberId
+    const { activityId } = req.body;
+
+    if (!activityId) {
+      return res.status(400).json({ success: false, error: "缺少參數" });
+    }
+
+    // 從資料庫中檢查該用戶是否已經喜歡該活動
     const checkSql = "SELECT * FROM favorites WHERE member_id = ? AND activity_id = ?";
     const [rows] = await db.query(checkSql, [memberId, activityId]);
 
     if (rows.length > 0) {
+      // 如果已經喜歡，則取消喜歡
       await db.query("DELETE FROM favorites WHERE member_id = ? AND activity_id = ?", [memberId, activityId]);
       return res.json({ success: true, liked: false });
     } else {
+      // 如果未喜歡，則新增最愛
       await db.query("INSERT INTO favorites (member_id, activity_id) VALUES (?, ?)", [memberId, activityId]);
       return res.json({ success: true, liked: true });
     }
   } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
+    return res.status(401).json({ success: false, error: "Token 驗證失敗" });
   }
 });
 
