@@ -251,8 +251,8 @@ pdRouter.get("/api", async (req, res) => {
 
 // 取得單筆資料
 pdRouter.get("/api/:pd_id", async (req, res) => {
-  console.log("API 被呼叫了，id:", req.pd_id);
-  const output = await getItemById(req.pd_id);
+  console.log("API 被呼叫了，id:", req.params.pd_id);
+  const output = await getItemById(req.params.pd_id);
   console.log("API 回傳資料:", output);
   return res.json(output);
 });
