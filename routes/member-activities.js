@@ -14,30 +14,31 @@ router.get("/:memberId/activities", async (req, res) => {
   try {
     const [rows] = await db.query(
       `SELECT 
-    a.al_id,
-    a.activity_name,
-    a.activity_time,
-    a.introduction,
-    a.deadline,
-    a.avatar,
-    a.need_num,
-    a.payment,
+    al.al_id,
+    al.activity_name,
+    al.activity_time,
+    al.introduction,
+    al.avatar,
+    al.deadline,
+    al.payment,
+    al.need_num,
     m.name AS name,
+    (
+        SELECT IFNULL(SUM(num), 0)
+        FROM registered
+        WHERE activity_id = al.al_id
+    ) AS registered_people,
     st.sport_name,
     ci.name AS court_name,
-    IFNULL(SUM(r2.num), 0) AS registered_people,
-    IF(f.id IS NOT NULL, true, false) AS is_favorite
-FROM registered r1
-JOIN activity_list a ON r1.activity_id = a.al_id
-JOIN sport_type st ON a.sport_type_id = st.id
-JOIN court_info ci ON a.court_id = ci.id
-JOIN members m ON a.founder_id = m.id
-LEFT JOIN registered r2 ON a.al_id = r2.activity_id
-LEFT JOIN favorites f ON f.activity_id = a.al_id AND f.member_id = ?
-WHERE r1.member_id = ?
-GROUP BY a.al_id
-`,
-      [memberId, memberId]
+    TRUE AS is_registered
+FROM registered r
+JOIN activity_list al ON r.activity_id = al.al_id
+JOIN sport_type st ON al.sport_type_id = st.id
+JOIN court_info ci ON al.court_id = ci.id
+JOIN members m ON al.founder_id = m.id
+WHERE r.member_id = ?
+GROUP BY al.al_id, al.activity_name, st.sport_name, ci.name;`,
+    [memberId, memberId]
     );
     // 格式化時間為 YYYY-MM-DD HH:mm
     rows.forEach((activity) => {
