@@ -25,7 +25,7 @@ router.get("/:memberId/activities", async (req, res) => {
     m.name AS name,
     st.sport_name,
     ci.name AS court_name,
-    IFNULL(SUM(r1.num), 0) AS registered_people,
+    IFNULL(SUM(r2.num), 0) AS registered_people,
     IF(f.id IS NOT NULL, true, false) AS is_favorite
 FROM registered r1
 JOIN activity_list a ON r1.activity_id = a.al_id
