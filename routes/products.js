@@ -100,11 +100,17 @@ const getListData = async (req) => {
     : req.query.apparel
     ? [req.query.apparel]
     : [];
+    let themes = Array.isArray(req.query.themes)
+  ? req.query.themes
+  : req.query.themes
+  ? [req.query.themes]
+  : [];
   let categoryId = req.query.categoryId ? parseInt(req.query.categoryId) : null;
   let minPrice = req.query.minPrice ? parseFloat(req.query.minPrice) : null;
   let maxPrice = req.query.maxPrice ? parseFloat(req.query.maxPrice) : null;
   let sortField = req.query.sortField || "id";
   let sortRule = req.query.sortRule || "asc"; // asc, desc
+  
   let params = [member_id]; // 初始參數給 like 的子查詢
   let paramsForTotal = [];  // 查總筆數用（沒有用到 member_id）
 
@@ -154,10 +160,17 @@ const getListData = async (req) => {
   // 🔍 服飾子分類（如 pd_type）
   if (apparel.length > 0) {
     output.apparel = apparel;
-    where += ` AND c.pd_type IN (${apparel.map(() => "?").join(",")}) `;
+    where += ` AND c.parent_id IN (${apparel.map(() => "?").join(",")}) `;
     params.push(...apparel);
     paramsForTotal.push(...apparel);
   }
+
+  // 🔍 主題名稱（多選）
+if (themes.length > 0) {
+  where += ` AND t.name IN (${themes.map(() => "?").join(",")}) `;
+  params.push(...themes);
+  paramsForTotal.push(...themes);
+}
 
   // 🔍 指定 categoryId（數字 id）
   if (categoryId) {
@@ -186,9 +199,14 @@ const getListData = async (req) => {
   }
 
   // 查詢總筆數
-  const t_sql = `SELECT COUNT(1) AS totalRows 
-   FROM products pd LEFT JOIN categories c ON pd.category_id = c.id
+  const t_sql = `SELECT COUNT(DISTINCT pd.id) AS totalRows 
+   FROM products pd
+   LEFT JOIN categories c ON pd.category_id = c.id
+   LEFT JOIN product_sports ps ON pd.id = ps.product_id
    LEFT JOIN sport_type s ON pd.sport_type_id = s.id
+   LEFT JOIN product_themes pt ON pd.id = pt.product_id
+LEFT JOIN pd_themes t ON pt.theme_id = t.id
+
    ${where} `;
   const [[{ totalRows }]] = await db.query(t_sql, params); // 取得總筆數
   const totalPages = Math.ceil(totalRows / perPage);
@@ -204,9 +222,10 @@ const getListData = async (req) => {
 
   // 取得資料庫需要的表裡的資料
   const sql = `
-  SELECT pd.*, c.categories_name, c.pd_type, l.like_id
+  SELECT DISTINCT pd.*, c.categories_name, l.like_id
   FROM products pd 
   LEFT JOIN categories c ON pd.category_id = c.id
+  LEFT JOIN product_sports ps ON pd.id = ps.product_id
   LEFT JOIN sport_type s ON pd.sport_type_id = s.id
   LEFT JOIN ( SELECT * FROM pd_likes WHERE member_id=? ) l ON pd.id=l.pd_id
   ${where} 
