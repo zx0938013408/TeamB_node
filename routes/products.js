@@ -74,7 +74,11 @@ const getListData = async (req) => {
     page: 0,
     rows: [],
     keyword: "",
-    category:"",
+    category: "",
+    sports: [],
+    apparel: [],
+    // minPrice:"",
+    // maxPrice:""
   };
 
   // 會員的編號
@@ -84,15 +88,24 @@ const getListData = async (req) => {
   // 取得GET 參數
   const perPage = output.perPage;
   let page = +req.query.page || 1;
-  let keyword = req.query.keyword ? req.query.keyword.trim() : "";
-  let category = req.query.category;
-  // let price_lowest = parseFloat(req.query.price_lowest) || 0;
-  // let price_highest = parseFloat(req.query.price_highest) || Infinity;
-  //let category_id = parseInt(req.query.category_id) || null; // 新增分類篩選
-  //let sportType = req.query.sports ? req.query.sports.trim() : ""; // 新增運動類別篩選
+  let keyword = req.query.keyword?.trim() || "";
+  let category = req.query.category?.trim() || ""; // ✅ 加上 category 變數
+  let sports = Array.isArray(req.query.sports)
+    ? req.query.sports
+    : req.query.sports
+    ? [req.query.sports]
+    : [];
+  let apparel = Array.isArray(req.query.apparel)
+    ? req.query.apparel
+    : req.query.apparel
+    ? [req.query.apparel]
+    : [];
+  let categoryId = req.query.categoryId ? parseInt(req.query.categoryId) : null;
+  let minPrice = req.query.minPrice ? parseFloat(req.query.minPrice) : null;
+  let maxPrice = req.query.maxPrice ? parseFloat(req.query.maxPrice) : null;
   let sortField = req.query.sortField || "id";
   let sortRule = req.query.sortRule || "asc"; // asc, desc
-
+  let params = [member_id]; // 初始參數給 like 的子查詢
   // 設定排序條件
   let orderBy = "";
   switch (sortField + "-" + sortRule) {
@@ -113,32 +126,50 @@ const getListData = async (req) => {
 
   // 組合 Where 條件
   let where = ` WHERE 1 `;
-  // let params = [];
+
+  // 🔍 關鍵字
   if (keyword) {
     output.keyword = keyword; // 要輸出給 EJS
     let keyword_ = db.escape(`%${keyword}%`); // 防止 SQL 注入
     where += ` AND (pd.product_name LIKE ${keyword_} OR pd.product_description LIKE ${keyword_}) `;
-    // params.push(`%${keyword_}%`, `%${keyword_}%`);
   }
 
-  // if (!isNaN(price_lowest) && price_lowest > 0) {
-  //   where += ` AND pd.price >= ? `;
-  //   params.push(price_lowest);
-  // }
+  // 🔍 分類（分類名稱）
+  if (category) {
+    output.category = category;
+    where += ` AND c.categories_name = ? `;
+    params.push(category);
+  }
 
-  // if (!isNaN(price_highest) && price_highest < Infinity) {
-  //   where += ` AND pd.price <= ? `;
-  //   params.push(price_highest);
-  // }
+  // 🔍 運動類別
+  if (sports.length > 0) {
+    where += ` AND s.sport_name IN (${sports.map(() => "?").join(",")}) `;
+    params.push(...sports);
+  }
 
-  // if (category) {
-  //   where += ` AND pd.category_id = ? `;
-  //   params.push(category_id);
-  // }
-  // if (sportType) {
-  //   where += ` AND pd.sports = ? `;
-  //   params.push(sportType);
-  // }
+  // 🔍 服飾子分類（如 pd_type）
+  if (apparel.length > 0) {
+    output.apparel = apparel;
+    where += ` AND c.pd_type IN (${apparel.map(() => "?").join(",")}) `;
+    params.push(...apparel);
+  }
+
+  // 🔍 指定 categoryId（數字 id）
+  if (categoryId) {
+    where += ` AND pd.category_id = ? `;
+    params.push(categoryId);
+  }
+
+  // 最低、最高價
+  if (minPrice !== null) {
+    where += " AND pd.price >= ? ";
+    params.push(minPrice);
+  }
+  
+  if (maxPrice !== null) {
+    where += " AND pd.price <= ? ";
+    params.push(maxPrice);
+  }
 
   // 處理分頁錯誤
   if (page < 1) {
@@ -148,8 +179,10 @@ const getListData = async (req) => {
 
   // 查詢總筆數
   const t_sql = `SELECT COUNT(1) AS totalRows 
-   FROM products pd ${where} `;
-  const [[{ totalRows }]] = await db.query(t_sql); // 取得總筆數
+   FROM products pd LEFT JOIN categories c ON pd.category_id = c.id
+   LEFT JOIN sport_type s ON pd.sport_type_id = s.id
+   ${where} `;
+  const [[{ totalRows }]] = await db.query(t_sql, params); // 取得總筆數
   const totalPages = Math.ceil(totalRows / perPage);
   let rows = [];
 
@@ -161,22 +194,31 @@ const getListData = async (req) => {
     }
   }
 
-  // 查詢資料 (依各自資料庫資料顯示需求更改下列)
+  // 取得資料庫需要的表裡的資料
   const sql = `
-  SELECT pd.*, c.categories_name, l.like_id 
+  SELECT pd.*, c.categories_name, c.pd_type, l.like_id
   FROM products pd 
   LEFT JOIN categories c ON pd.category_id = c.id
+  LEFT JOIN sport_type s ON pd.sport_type_id = s.id
   LEFT JOIN ( SELECT * FROM pd_likes WHERE member_id=? ) l ON pd.id=l.pd_id
   ${where} 
   ${orderBy}
   LIMIT ?, ?`;
 
-  [rows] = await db.query(sql, [member_id, (page - 1) * perPage, perPage]);
-  // params.unshift(member_id, (page - 1) * perPage, perPage);
-  // [rows] = await db.query(sql, params);
+  // [rows] = await db.query(sql, [req.my_jwt?.id || req.session.admin?.member_id || 0, (page - 1) * perPage, perPage]);
+
+  params.push((page - 1) * perPage, perPage);
+  const [rowsResult] = await db.query(sql, params);
 
   // 回傳結果
-  return { ...output, totalRows, totalPages, page, rows, success: true };
+  return {
+    ...output,
+    totalRows,
+    totalPages,
+    page,
+    rows: rowsResult,
+    success: true,
+  };
 };
 
 // 路由權限管理
@@ -259,7 +301,7 @@ pdRouter.get("/api/:pd_id", async (req, res) => {
 
 // 刪除資料
 pdRouter.delete("/api/:pd_id", async (req, res) => {
-  const pd_id = parseInt(req.pd_id, 10);
+  const pd_id = parseInt(req.params.pd_id, 10);
   if (!pd_id || pd_id < 1) {
     return res.json({ success: false, error: "無效的商品 ID" });
   }
@@ -282,7 +324,7 @@ pdRouter.delete("/api/:pd_id", async (req, res) => {
 pdRouter.post("/api/edit/:id", async (req, res) => {
   const output = {
     success: false,
-    pd_id: req.id,
+    pd_id: req.params.id,
     error: "",
   };
 
@@ -348,7 +390,7 @@ pdRouter.put("/api/:id", upload.single("image"), async (req, res) => {
     success,
     error,
     data: originalData,
-  } = await getItemById(req.id);
+  } = await getItemById(req.params.id);
   if (!success) {
     output.error = error;
     return res.json(output);
@@ -428,5 +470,29 @@ pdRouter.put("/api/:id", upload.single("image"), async (req, res) => {
 
   res.json(output);
 });
+
+// // 分類搜尋
+// pdRouter.get("/", async (req, res) => {
+//   try {
+//     // 取得 Categories 表中的所有分類名稱
+//     const [categoriesResult] = await db.execute("SELECT DISTINCT categories_name FROM Categories");
+
+//         // 取得 sport_type 表中的所有運動類型名稱
+//         const [sportsResult] = await db.execute("SELECT DISTINCT sport_name FROM sport_type");
+
+//     // 整理回傳格式
+//     const categories = categoriesResult.map(row => row.categories_name);
+//     const sports = sportsResult.map(row => row.sport_name);
+
+//     res.json({
+//       success: true,
+//       categories,
+//       sports,
+//     });
+//   } catch (error) {
+//     console.error("❌ 查詢分類資料錯誤:", error);
+//     res.status(500).json({ success: false, message: "資料庫錯誤" });
+//   }
+// });
 
 export default pdRouter;
