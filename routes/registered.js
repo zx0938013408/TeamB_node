@@ -145,13 +145,21 @@ router.post("/api", async (req, res) => {
 /**
  * 更新報名資料
  */
-router.put("/api/:id", async (req, res) => {
-  const { id } = req.params;
-  const { num, notes } = req.body;
+router.put("/api", async (req, res) => {
+  const { activity_id, member_id, num, notes } = req.body;
+
+  if (!activity_id || !member_id) {
+    return res.status(400).json({ success: false, error: "缺少必要參數" });
+  }
 
   try {
-    const sql = `UPDATE registered SET num = ?, notes = ? WHERE id = ?;`;
-    const [result] = await db.query(sql, [num, notes, id]);
+    const sql = `
+    UPDATE registered 
+    SET num = ?, 
+    notes = ? 
+    WHERE activity_id = ? 
+    AND member_id = ?`;
+    const [result] = await db.query(sql, [num, notes, activity_id, member_id]);
 
     res.json({ success: true, result });
   } catch (error) {
