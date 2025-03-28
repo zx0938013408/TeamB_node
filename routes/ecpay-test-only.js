@@ -12,7 +12,7 @@ router.get('/', function (req, res) {
   const itemName =
     items.split(',').length > 1
       ? items.split(',').join('#')
-      : '線上商店購買一批'
+      : items
 
   if (isDev) console.log('amount:', amount)
   if (isDev) console.log('items:', items)

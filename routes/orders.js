@@ -50,7 +50,7 @@ router.get("/api", async (req, res) => {
       LEFT JOIN citys ON shopping_detail.city_id = citys.city_id
       LEFT JOIN areas ON shopping_detail.area_id = areas.area_id 
       LEFT JOIN members ON orders.members_id = members.id
-      ORDER BY items_id DESC
+      ORDER BY orders.created_at DESC
     `;
     const [rows] = await db.query(sql);
 
@@ -172,7 +172,7 @@ router.post("/api", async (req, res) => {
   const connection = await db.getConnection(); // 取得資料庫連線
 
   try {
-    await connection.beginTransaction(); // 🔹 開始交易
+    await connection.beginTransaction(); // 開始交易
 
   // 產生唯一訂單編號 (格式：odYYYYMMDDHHMMSS + 隨機數字)
   const generateOrderNumber = () => {
@@ -187,7 +187,7 @@ router.post("/api", async (req, res) => {
   const seconds = String(now.getSeconds()).padStart(2, '0');
 
   // 隨機數字 (例如：一個3位數字)
-  const randomNumber = Math.floor(Math.random() * 1000);  
+  const randomNumber =  String(Math.floor(Math.random() * 1000)).padStart(3, '0');   
 
   // 拼接成需要的訂單編號格式
   return `od${year}${month}${day}${hours}${minutes}${seconds}${randomNumber}`;
