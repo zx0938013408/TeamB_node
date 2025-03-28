@@ -458,19 +458,24 @@ router.post("/login-jwt", async (req, res) => {
   members.id,
   members.name,
   members.gender,
-  members. birthday_date ,
+  members.birthday_date,
+  members.city_id,              -- ✅ 加這行
+  members.area_id,              -- ✅ 加這行
   citys.city_name AS city,
+  MAX(areas.name) AS area,
   members.address,
   members.phone,
   members.email,
   members.password_hashed,
   members.avatar,
-    GROUP_CONCAT(sport_type.sport_name SEPARATOR ', ') AS sports
+  GROUP_CONCAT(DISTINCT sport_type.id SEPARATOR ',') AS sport_id,  
+  GROUP_CONCAT(DISTINCT sport_type.sport_name SEPARATOR ', ') AS sports
 FROM members 
 JOIN citys ON citys.city_id = members.city_id
+LEFT JOIN areas ON areas.city_id = citys.city_id
 LEFT JOIN member_sports ON members.id = member_sports.member_id
 LEFT JOIN sport_type ON member_sports.sport_id = sport_type.id
-where members.email = ?
+WHERE members.email = ?
 GROUP BY members.id;`;
 
   const [rows] = await db.query(sql, [email]);
@@ -501,13 +506,16 @@ GROUP BY members.id;`;
     email: row.email,
     gender: row.gender,
     phone: row.phone,
+    city_id: row.city_id,
+    area_id: row.area_id,
     city: row.city,
     area: row.area,
     address: row.address,
     name: row.name,
     avatar: row.avatar,
     birthday_date: row.birthday_date,
-    sports:row.sports,
+   sport: row.sport_id,       // ✅ 統一前端使用欄位名稱為 sport（ID 組成的字串）
+sportText: row.sports,     // ✅ 對應名稱
     token,
   };
   
@@ -565,6 +573,13 @@ router.get("/jwt-data", (req, res) => {
   
       // 獲取前端傳來的資料
       const { name, gender, sport, phone, address, city_id, area_id } = req.body;
+
+      if (!name || !gender || !phone || !address || !city_id || !area_id) {
+        return res.status(400).json({ success: false, message: "請填寫完整資料" });
+      }
+      if (!phone.match(/^(09)\d{8}$/)) {
+        return res.status(400).json({ success: false, message: "手機格式錯誤" });
+      }
   
 var sql_sport=`
 SELECT GROUP_CONCAT(sport_name) AS sport_names
@@ -613,7 +628,7 @@ let sportText = sport_types[0].sport_names;
 
 
   
-      const updateMembersValues = [name, gender, phone, address, avatarPath,city_id,area_id, userId ];
+      const updateMembersValues = [name, gender, phone, address, avatarPath, city_id, area_id, userId ];
   
         // 執行更新操作
         await db.query(updateMembersSql, updateMembersValues);
@@ -646,11 +661,15 @@ let sportText = sport_types[0].sport_names;
         success: true,
         message: "資料更新成功",
         user: {
+          city_id,       
+          area_id, 
           id: userId,
-          city:city_id,
+          city:city,
+          area:area,
           name,
           gender,
-          sport: sportText,
+          sport: sport,     
+          sportText: sportText,
           phone,
           address,
           avatar: avatarPath,
