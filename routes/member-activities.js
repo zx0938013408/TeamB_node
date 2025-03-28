@@ -31,13 +31,13 @@ router.get("/:memberId/activities", async (req, res) => {
     st.sport_name,
     ci.name AS court_name,
     TRUE AS is_registered
-FROM registered r
-JOIN activity_list al ON r.activity_id = al.al_id
-JOIN sport_type st ON al.sport_type_id = st.id
-JOIN court_info ci ON al.court_id = ci.id
-JOIN members m ON al.founder_id = m.id
-WHERE r.member_id = ?
-GROUP BY al.al_id, al.activity_name, st.sport_name, ci.name;`,
+  FROM registered r
+  JOIN activity_list al ON r.activity_id = al.al_id
+  JOIN sport_type st ON al.sport_type_id = st.id
+  JOIN court_info ci ON al.court_id = ci.id
+  JOIN members m ON al.founder_id = m.id
+  WHERE r.member_id = ?
+  GROUP BY al.al_id, al.activity_name, st.sport_name, ci.name;`,
     [memberId, memberId]
     );
     // 格式化時間為 YYYY-MM-DD HH:mm
@@ -79,6 +79,9 @@ router.get("/:memberId/created-activities", async (req, res) => {
         al.deadline,
         al.payment,
         al.need_num,
+        al.area_id,
+        al.court_id,
+        al.sport_type_id,
         al.avatar,
         al.avatar2,
         al.avatar3,
