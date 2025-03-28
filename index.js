@@ -214,23 +214,50 @@ wss.on('connection', (ws) => {
       // 📌 查詢活動資料（多表 JOIN）
       let activitySql = `
         SELECT 
-            registered.id, 
-            registered.member_id, 
-            registered.activity_id, 
-            registered.num, 
-            registered.notes, 
-            registered.registered_time, 
-            members.name AS member_name, 
-            activity_list.activity_name 
-        FROM registered
-        JOIN members ON registered.member_id = members.id
-        JOIN activity_list ON registered.activity_id = activity_list.al_id
-        WHERE registered.id = ?
+        	activity_list.al_id "活動id", 
+          activity_list.activity_name "活動名稱",
+          sport_type.sport_name "活動類型",
+          members.name "團主姓名",
+          members.email "聯絡方式",
+          activity_list.need_num "需求人數",
+          citys.city_name "活動縣市",
+          areas.name "活動區域",
+          court_info.address "活動地址",
+          court_info.name "場地名稱",
+          activity_list.activity_time "活動時間",
+          activity_list.deadline "報名期限",
+          activity_list.payment "活動費用",
+          activity_list.introduction "活動詳情"
+        FROM activity_list
+        JOIN sport_type ON activity_list.sport_type_id = sport_type.id
+        LEFT JOIN members ON activity_list.founder_id = members.id
+        LEFT JOIN areas ON activity_list.area_id = areas.area_id
+        LEFT JOIN citys ON areas.city_id = citys.city_id
+        LEFT JOIN court_info ON activity_list.court_id = court_info.id
+        WHERE 1=1
       `;
 
-      const activityParams = [memberId, `%${keyword}%`, `%${keyword}%`];
+      const activityParams = [];
+
+      // 加上關鍵字模糊搜尋（可擴充比對活動名稱、運動類型、地區、場地名稱）
+      if (keyword) {
+        activitySql += `
+          AND (
+            activity_list.activity_name LIKE ? OR 
+            sport_type.sport_name LIKE ? OR 
+            citys.city_name LIKE ? OR 
+            areas.name LIKE ? OR
+            court_info.name LIKE ? OR
+            members.name LIKE ?
+          )
+        `;
+        const likeKeyword = `%${keyword}%`;
+        activityParams.push(likeKeyword, likeKeyword, likeKeyword, likeKeyword, likeKeyword);
+      }
+      
+      // 加上日期搜尋
       if (date) {
-        // activitySql += ' AND al.activity_time = ?';
+        activitySql += ` AND DATE(activity_list.activity_time) = ?`;
         activityParams.push(date);
       }
 
