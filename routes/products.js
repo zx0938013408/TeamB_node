@@ -106,6 +106,8 @@ const getListData = async (req) => {
   let sortField = req.query.sortField || "id";
   let sortRule = req.query.sortRule || "asc"; // asc, desc
   let params = [member_id]; // 初始參數給 like 的子查詢
+  let paramsForTotal = [];  // 查總筆數用（沒有用到 member_id）
+
   // 設定排序條件
   let orderBy = "";
   switch (sortField + "-" + sortRule) {
@@ -139,12 +141,14 @@ const getListData = async (req) => {
     output.category = category;
     where += ` AND c.categories_name = ? `;
     params.push(category);
+    paramsForTotal.push(category);
   }
 
   // 🔍 運動類別
   if (sports.length > 0) {
     where += ` AND s.sport_name IN (${sports.map(() => "?").join(",")}) `;
     params.push(...sports);
+    paramsForTotal.push(...sports);
   }
 
   // 🔍 服飾子分類（如 pd_type）
@@ -152,23 +156,27 @@ const getListData = async (req) => {
     output.apparel = apparel;
     where += ` AND c.pd_type IN (${apparel.map(() => "?").join(",")}) `;
     params.push(...apparel);
+    paramsForTotal.push(...apparel);
   }
 
   // 🔍 指定 categoryId（數字 id）
   if (categoryId) {
     where += ` AND pd.category_id = ? `;
     params.push(categoryId);
+    paramsForTotal.push(categoryId);
   }
 
   // 最低、最高價
   if (minPrice !== null) {
     where += " AND pd.price >= ? ";
     params.push(minPrice);
+    paramsForTotal.push(minPrice);
   }
   
   if (maxPrice !== null) {
     where += " AND pd.price <= ? ";
     params.push(maxPrice);
+    paramsForTotal.push(maxPrice);
   }
 
   // 處理分頁錯誤
