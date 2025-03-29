@@ -31,12 +31,14 @@ router.get("/:memberId/activities", async (req, res) => {
     ) AS registered_people,
     st.sport_name,
     ci.name AS court_name,
-    TRUE AS is_registered
+    TRUE AS is_registered,
+    IF(f.id IS NOT NULL, true, false) AS is_favorite
   FROM registered r
   JOIN activity_list al ON r.activity_id = al.al_id
   JOIN sport_type st ON al.sport_type_id = st.id
   JOIN court_info ci ON al.court_id = ci.id
   JOIN members m ON al.founder_id = m.id
+  LEFT JOIN favorites f ON f.activity_id = al.al_id AND f.member_id = ?
   WHERE r.member_id = ?
   GROUP BY registered_id, al.al_id, al.activity_name, st.sport_name, ci.name;`,
       [memberId, memberId]
