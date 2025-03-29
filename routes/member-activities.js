@@ -14,6 +14,7 @@ router.get("/:memberId/activities", async (req, res) => {
   try {
     const [rows] = await db.query(
       `SELECT 
+    r.id registered_id,
     al.al_id,
     al.activity_name,
     al.activity_time,
@@ -39,7 +40,7 @@ router.get("/:memberId/activities", async (req, res) => {
   JOIN members m ON al.founder_id = m.id
   LEFT JOIN favorites f ON f.activity_id = al.al_id AND f.member_id = ?
   WHERE r.member_id = ?
-  GROUP BY al.al_id, al.activity_name, st.sport_name, ci.name;`,
+  GROUP BY registered_id, al.al_id, al.activity_name, st.sport_name, ci.name;`,
       [memberId, memberId]
     );
     // 格式化時間為 YYYY-MM-DD HH:mm
