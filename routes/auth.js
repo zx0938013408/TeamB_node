@@ -518,9 +518,46 @@ GROUP BY members.id;`;
 sportText: row.sports,     // ✅ 對應名稱
     token,
   };
+
+
+
+   // 查詢用戶報名的未來7天的活動
+   const activitySql = `
+   SELECT al.activity_name, al.activity_time, r.registered_time
+   FROM activity_list al
+   JOIN registered r ON al.al_id = r.activity_id
+   WHERE r.member_id = ? 
+   AND al.activity_time BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 7 DAY);
+ `;
+
+ const [activityRows] = await db.query(activitySql, [row.id]);
+
+ // 如果有活動，創建通知
+ if (activityRows.length > 0) {
+   const notificationSql = `
+     INSERT INTO notifications (user_id, activity_id, notification_type, status)
+     VALUES ?;
+   `;
+
+   // 準備插入多條通知
+   const notifications = activityRows.map(activity => [
+     row.id,
+     activity.al_id, 
+     '活動通知',  // 設定通知類型
+     0  // 設定狀態為未查看
+   ]);
+
+   // 將通知插入資料庫
+   await db.query(notificationSql, [notifications]);
+ }
+
   
   res.json(output);
 });
+
+
+
+
 
 
 
@@ -664,8 +701,8 @@ let sportText = sport_types[0].sport_names;
           city_id,       
           area_id, 
           id: userId,
-          city:city,
-          area:area,
+          city:city_id,
+          area:area_id,
           name,
           gender,
           sport: sport,     
@@ -748,12 +785,13 @@ router.post('/api/change-password', checkAuth, async (req, res) => {
     await db.query('UPDATE members SET password_hashed = ? WHERE id = ?', [hashedNewPassword, userId]);
 
     res.json({ message: '密碼更改成功，請重新登入' });
-    
+
   } catch (error) {
     console.error('Error changing password:', error);
     res.status(500).json({ message: '伺服器錯誤' });
   }
 });
+
 
 
 //忘記密碼：設定密碼
