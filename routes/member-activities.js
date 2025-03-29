@@ -1,7 +1,7 @@
 // routes/member-activities.js
 import express from "express";
 import db from "../utils/connect-mysql.js";
-
+import upload from "../utils/upload-images.js";
 const router = express.Router();
 // 查詢會員已報名活動
 router.get("/:memberId/activities", async (req, res) => {
@@ -38,7 +38,7 @@ router.get("/:memberId/activities", async (req, res) => {
   JOIN members m ON al.founder_id = m.id
   WHERE r.member_id = ?
   GROUP BY al.al_id, al.activity_name, st.sport_name, ci.name;`,
-    [memberId, memberId]
+      [memberId, memberId]
     );
     // 格式化時間為 YYYY-MM-DD HH:mm
     rows.forEach((activity) => {
@@ -193,5 +193,115 @@ function formatDateTime(dateTime) {
 
   return `${year}-${month}-${day} ${hours}:${minutes}`;
 }
+
+// 修改活動資料
+router.put("/:alId", upload.any(), async (req, res) => {
+  const alId = +req.params.alId || 0;
+  const output = { success: false, error: "" };
+
+  try {
+    const {
+      activity_name,
+      activity_time,
+      deadline,
+      payment,
+      need_num,
+      introduction,
+      area_id,
+      court_id,
+      sport_type_id,
+      avatar,
+      avatar2,
+      avatar3,
+      avatar4,
+    } = req.body;
+
+    // DEBUG 確認值
+    console.log("📥 後端收到 activity_name：", activity_name);
+
+    // 建立一個暫存的檔案名物件
+    const fileMap = {};
+    if (req.files && req.files.length) {
+      req.files.forEach((file, idx) => {
+        fileMap[`avatar${idx === 0 ? "" : idx + 1}`] = file.filename;
+      });
+    }
+
+    const sql = `
+      UPDATE activity_list 
+      SET 
+        activity_name = ?, 
+        activity_time = ?, 
+        deadline = ?, 
+        payment = ?, 
+        need_num = ?, 
+        introduction = ?, 
+        area_id = ?, 
+        court_id = ?,
+        avatar = ?, 
+        avatar2 = ?, 
+        avatar3 = ?, 
+        avatar4 = ?, 
+        sport_type_id = ?
+        WHERE al_id = ?`;
+
+    const [result] = await db.query(sql, [
+      activity_name,
+      activity_time,
+      deadline,
+      payment,
+      need_num,
+      introduction,
+      area_id,
+      court_id,
+      fileMap.avatar || avatar, // 如果有上傳新檔案就用新的
+      fileMap.avatar2 || avatar2,
+      fileMap.avatar3 || avatar3,
+      fileMap.avatar4 || avatar4,
+      sport_type_id,
+      alId,
+    ]);
+
+    output.success = result.affectedRows === 1;
+  } catch (err) {
+    output.error = err.message;
+  }
+
+  res.json(output);
+});
+
+// 查詢單一活動資料
+router.get("/activity/:id", async (req, res) => {
+  const alId = +req.params.id;
+  const output = { success: false, data: null };
+
+  try {
+    const [rows] = await db.query(
+      `SELECT 
+        al.*, 
+        st.sport_name, 
+        ci.name AS court_name,
+        IFNULL(SUM(r.num), 0) AS registered_people
+      FROM activity_list al
+      JOIN sport_type st ON al.sport_type_id = st.id
+      JOIN court_info ci ON al.court_id = ci.id
+      LEFT JOIN registered r ON al.al_id = r.activity_id
+      WHERE al.al_id = ?
+      GROUP BY al.al_id`,
+      [alId]
+    );
+
+    if (rows.length > 0) {
+      output.success = true;
+      output.data = rows[0];
+    } else {
+      output.error = "找不到活動資料";
+    }
+  } catch (err) {
+    output.error = err.message;
+  }
+
+  res.json(output);
+});
 
 export default router;
