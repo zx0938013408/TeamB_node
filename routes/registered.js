@@ -145,25 +145,23 @@ router.post("/api", async (req, res) => {
 /**
  * 更新報名資料
  */
-router.put("/api", async (req, res) => {
-  const { activity_id, member_id, num, notes } = req.body;
+router.put("/api/:id", async (req, res) => {
+  const { num, notes } = req.body;
+  const { id } = req.params;
 
-  if (!activity_id || !member_id) {
-    return res.status(400).json({ success: false, error: "缺少必要參數" });
-  }
+  if (!num || !id) return res.status(400).json({ success: false, error: "缺少參數" });
 
   try {
     const sql = `
-    UPDATE registered 
-    SET num = ?, 
-    notes = ? 
-    WHERE activity_id = ? 
-    AND member_id = ?`;
-    const [result] = await db.query(sql, [num, notes, activity_id, member_id]);
+      UPDATE registered 
+      SET num = ?, notes = ? 
+      WHERE id = ?
+    `;
+    const [result] = await db.query(sql, [num, notes, id]);
 
     res.json({ success: true, result });
   } catch (error) {
-    console.error("更新報名資料時發生錯誤: ", error);
+    console.error("更新報名資料錯誤:", error);
     res.status(500).json({ success: false, error: "伺服器錯誤" });
   }
 });
