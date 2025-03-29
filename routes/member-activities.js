@@ -304,4 +304,53 @@ router.get("/activity/:id", async (req, res) => {
   res.json(output);
 });
 
+// 刪除活動
+router.delete("/:alId", async (req, res) => {
+  const alId = +req.params.alId || 0;
+  const { cancel_reason } = req.body; // 前端要傳取消原因
+
+  const output = { success: false, error: "" };
+
+  if (!alId || !cancel_reason) {
+    output.error = "請提供活動 ID 和取消原因";
+    return res.json(output);
+  }
+
+  try {
+    // 1. 寫入取消原因（不馬上刪除）
+    await db.query("UPDATE activity_list SET cancel_reason = ? WHERE al_id = ?", [
+      cancel_reason,
+      alId,
+    ]);
+
+    // 2. 查詢已報名會員
+    const [members] = await db.query(
+      `SELECT DISTINCT member_id FROM registered WHERE activity_id = ?`,
+      [alId]
+    );
+
+    // 3. 發送訊息
+    for (const member of members) {
+      await db.query(
+        `INSERT INTO messages (member_id, title, content) VALUES (?, ?, ?)`,
+        [
+          member.member_id,
+          "活動取消通知",
+          `您報名的活動（ID: ${alId}）已被取消，原因如下：\n${cancel_reason}`,
+        ]
+      );
+    }
+
+    // 4. 最後刪除活動（或保留資料，看你需求）
+    const [result] = await db.query("DELETE FROM activity_list WHERE al_id = ?", [alId]);
+    output.success = result.affectedRows > 0;
+  } catch (err) {
+    output.error = err.message;
+  }
+
+  res.json(output);
+});
+
+
+
 export default router;
