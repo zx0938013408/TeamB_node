@@ -270,4 +270,38 @@ router.put("/:alId", upload.any(), async (req, res) => {
   res.json(output);
 });
 
+// 查詢單一活動資料
+router.get("/activity/:id", async (req, res) => {
+  const alId = +req.params.id;
+  const output = { success: false, data: null };
+
+  try {
+    const [rows] = await db.query(
+      `SELECT 
+        al.*, 
+        st.sport_name, 
+        ci.name AS court_name,
+        IFNULL(SUM(r.num), 0) AS registered_people
+      FROM activity_list al
+      JOIN sport_type st ON al.sport_type_id = st.id
+      JOIN court_info ci ON al.court_id = ci.id
+      LEFT JOIN registered r ON al.al_id = r.activity_id
+      WHERE al.al_id = ?
+      GROUP BY al.al_id`,
+      [alId]
+    );
+
+    if (rows.length > 0) {
+      output.success = true;
+      output.data = rows[0];
+    } else {
+      output.error = "找不到活動資料";
+    }
+  } catch (err) {
+    output.error = err.message;
+  }
+
+  res.json(output);
+});
+
 export default router;
