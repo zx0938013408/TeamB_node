@@ -3,6 +3,8 @@ import db from "../utils/connect-mysql.js";
 import fs from "node:fs/promises";
 import { z } from "zod";
 import upload from "../utils/upload-images.js";
+const router = express.Router();
+import jwt from 'jsonwebtoken';
 
 const pdRouter = express.Router();
 
@@ -77,6 +79,7 @@ const getListData = async (req) => {
     category: "",
     sports: [],
     apparel: [],
+    themes: [],
     // minPrice:"",
     // maxPrice:""
   };
@@ -100,19 +103,19 @@ const getListData = async (req) => {
     : req.query.apparel
     ? [req.query.apparel]
     : [];
-    let themes = Array.isArray(req.query.themes)
-  ? req.query.themes
-  : req.query.themes
-  ? [req.query.themes]
-  : [];
+  let themes = Array.isArray(req.query.themes)
+    ? req.query.themes
+    : req.query.themes
+    ? [req.query.themes]
+    : [];
   let categoryId = req.query.categoryId ? parseInt(req.query.categoryId) : null;
   let minPrice = req.query.minPrice ? parseFloat(req.query.minPrice) : null;
   let maxPrice = req.query.maxPrice ? parseFloat(req.query.maxPrice) : null;
   let sortField = req.query.sortField || "id";
   let sortRule = req.query.sortRule || "asc"; // asc, desc
-  
+
   let params = [member_id]; // 初始參數給 like 的子查詢
-  let paramsForTotal = [];  // 查總筆數用（沒有用到 member_id）
+  let paramsForTotal = []; // 查總筆數用（沒有用到 member_id）
 
   // 設定排序條件
   let orderBy = "";
@@ -166,11 +169,11 @@ const getListData = async (req) => {
   }
 
   // 🔍 主題名稱（多選）
-if (themes.length > 0) {
-  where += ` AND t.name IN (${themes.map(() => "?").join(",")}) `;
-  params.push(...themes);
-  paramsForTotal.push(...themes);
-}
+  if (themes.length > 0) {
+    where += ` AND t.name IN (${themes.map(() => "?").join(",")}) `;
+    params.push(...themes);
+    paramsForTotal.push(...themes);
+  }
 
   // 🔍 指定 categoryId（數字 id）
   if (categoryId) {
@@ -185,7 +188,7 @@ if (themes.length > 0) {
     params.push(minPrice);
     paramsForTotal.push(minPrice);
   }
-  
+
   if (maxPrice !== null) {
     where += " AND pd.price <= ? ";
     params.push(maxPrice);
@@ -227,6 +230,8 @@ LEFT JOIN pd_themes t ON pt.theme_id = t.id
   LEFT JOIN categories c ON pd.category_id = c.id
   LEFT JOIN product_sports ps ON pd.id = ps.product_id
   LEFT JOIN sport_type s ON pd.sport_type_id = s.id
+  LEFT JOIN product_themes pt ON pd.id = pt.product_id
+  LEFT JOIN pd_themes t ON pt.theme_id = t.id
   LEFT JOIN ( SELECT * FROM pd_likes WHERE member_id=? ) l ON pd.id=l.pd_id
   ${where} 
   ${orderBy}
@@ -498,28 +503,63 @@ pdRouter.put("/api/:id", upload.single("image"), async (req, res) => {
   res.json(output);
 });
 
-// // 分類搜尋
-// pdRouter.get("/", async (req, res) => {
-//   try {
-//     // 取得 Categories 表中的所有分類名稱
-//     const [categoriesResult] = await db.execute("SELECT DISTINCT categories_name FROM Categories");
+//收藏商品
+pdRouter.post("/api/pd_likes", async (req, res) => {
+  const token = req.header('Authorization')?.split(' ')[1];
 
-//         // 取得 sport_type 表中的所有運動類型名稱
-//         const [sportsResult] = await db.execute("SELECT DISTINCT sport_name FROM sport_type");
+  if (!token) {
+    return res.status(401).json({ success: false, error: "未提供有效的Token" });
+  }
 
-//     // 整理回傳格式
-//     const categories = categoriesResult.map(row => row.categories_name);
-//     const sports = sportsResult.map(row => row.sport_name);
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_KEY);
+    const memberId = decoded.id;
+    const { pdId } = req.body; // ✅ 改成 productId
 
-//     res.json({
-//       success: true,
-//       categories,
-//       sports,
-//     });
-//   } catch (error) {
-//     console.error("❌ 查詢分類資料錯誤:", error);
-//     res.status(500).json({ success: false, message: "資料庫錯誤" });
-//   }
-// });
+    if (!pdId) {
+      return res.status(400).json({ success: false, error: "缺少參數" });
+    }
+
+    // ✅ 檢查是否已收藏這個商品
+    const checkSql = "SELECT * FROM pd_likes WHERE member_id = ? AND pd_id = ?";
+    const [rows] = await db.query(checkSql, [memberId, pdId]);
+
+    if (rows.length > 0) {
+      // ✅ 取消收藏
+      await db.query("DELETE FROM pd_likes WHERE member_id = ? AND pd_id = ?", [memberId, pdId]);
+      return res.json({ success: true, liked: false });
+    } else {
+      // ✅ 加入收藏
+      await db.query("INSERT INTO pd_likes (member_id, pd_id) VALUES (?, ?)", [memberId, pdId]);
+      return res.json({ success: true, liked: true });
+    }
+  } catch (err) {
+    return res.status(401).json({ success: false, error: "Token 驗證失敗" });
+  }
+});
+
+// 檢查是否收藏這個商品
+router.get("/api/pd_likes/check", async (req, res) => {
+  const token = req.header('Authorization')?.split(' ')[1];
+  const pdId = req.query.productId;
+
+  if (!token || !pdId) {
+    return res.status(400).json({ success: false, error: "缺少 token 或 pdId" });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_KEY);
+    const memberId = decoded.id;
+
+    const [rows] = await db.query(
+      "SELECT * FROM pd_likes WHERE member_id = ? AND product_id = ?",
+      [memberId, productId]
+    );
+
+    return res.json({ success: true, liked: rows.length > 0 });
+  } catch (err) {
+    return res.status(401).json({ success: false, error: "Token 驗證失敗" });
+  }
+});
 
 export default pdRouter;
