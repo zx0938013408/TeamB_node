@@ -503,6 +503,13 @@ pdRouter.put("/api/:id", upload.single("image"), async (req, res) => {
   res.json(output);
 });
 
+// 重刷頁面確認是否已收藏-方法
+async function CheckIfLiked(memberId, productId) {
+  const sql = "SELECT * FROM pd_likes WHERE member_id = ? AND pd_id = ?";
+  const [rows] = await db.query(sql, [memberId, productId]);
+  return rows.length > 0;
+}
+
 //收藏商品
 pdRouter.post("/api/pd_likes", async (req, res) => {
   const token = req.header("Authorization")?.split(" ")[1]; // 從 Authorization 標頭中獲取 token
@@ -546,16 +553,8 @@ pdRouter.post("/api/pd_likes", async (req, res) => {
   }
 });
 
-// 重刷頁面確認是否已收藏-方法
-async function CheckIfLiked(memberId, productId) {
-  const sql = "SELECT * FROM pd_likes WHERE member_id = ? AND pd_id = ?";
-  const [rows] = await db.query(sql, [memberId, productId]);
-  return rows.length > 0;
-}
-
 //確認是否已收藏
 pdRouter.get("/api/pd_likes/check/:pdId", async (req, res) => {
-
   const token = req.header("Authorization")?.split(" ")[1]; // 從 Authorization 標頭中獲取 token
 
   if (!token) {
@@ -568,7 +567,9 @@ pdRouter.get("/api/pd_likes/check/:pdId", async (req, res) => {
     const productId = req.params.pdId;
 
     if (!productId) {
-      return res.status(400).json({ success: false, error: "缺少 productId 參數" });
+      return res
+        .status(400)
+        .json({ success: false, error: "缺少 productId 參數" });
     }
 
     const isLiked = await CheckIfLiked(memberId, productId);
@@ -580,5 +581,54 @@ pdRouter.get("/api/pd_likes/check/:pdId", async (req, res) => {
     return res.status(401).json({ success: false, error: "Token 驗證失敗" });
   }
 });
+
+// 單一會員的收藏
+pdRouter.get("/api/member/:memberId", async (req, res) => {
+  const memberId = req.params.memberId;
+
+  try {
+    const [rows] = await db.query(
+      `SELECT pd.*, l.member_id
+       FROM pd_likes l
+       JOIN products pd ON l.pd_id = pd.id
+       WHERE l.member_id = ?`,
+      [memberId]
+    );
+
+    res.json({ success: true, rows });
+  } catch (error) {
+    console.error("取得收藏資料錯誤：", error);
+    res.status(500).json({ success: false, message: "資料庫錯誤" });
+  }
+});
+
+// 取消收藏
+pdRouter.delete('/api/pd_likes/:productId', async (req, res) => {
+  const token = req.header("Authorization")?.split(" ")[1]; // 從標頭中獲取 token
+  if (!token) {
+    return res.status(401).json({ success: false, error: "未提供有效的Token" });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_KEY); // 驗證 token
+    const memberId = decoded.id; // 使用 token 裡的 id 當成會員 ID
+    const productId = req.params.pdId;
+
+    const [result] = await db.query(
+      `DELETE FROM pd_likes WHERE member_id = ? AND pd_id = ?`,
+      [memberId, productId]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.json({ success: false, message: "找不到收藏紀錄" });
+    }
+
+    res.json({ success: true, message: "已移除收藏" });
+  } catch (error) {
+    console.error("JWT 驗證失敗或刪除錯誤：", error);
+    res.status(401).json({ success: false, error: "Token 無效或已過期" });
+  }
+});
+
 
 export default pdRouter;
