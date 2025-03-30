@@ -505,59 +505,35 @@ pdRouter.put("/api/:id", upload.single("image"), async (req, res) => {
 
 //收藏商品
 pdRouter.post("/api/pd_likes", async (req, res) => {
-  const token = req.header('Authorization')?.split(' ')[1];
-
+  const token = req.header('Authorization')?.split(' ')[1]; // 從 Authorization 標頭中獲取 token
+  
   if (!token) {
     return res.status(401).json({ success: false, error: "未提供有效的Token" });
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_KEY);
-    const memberId = decoded.id;
-    const { pdId } = req.body; // ✅ 改成 productId
-
-    if (!pdId) {
+    const decoded = jwt.verify(token, process.env.JWT_KEY); // 驗證 token
+    const memberId = decoded.id;  // 使用解碼後的 `id` 作為 memberId
+    const { productId } = req.body;
+    console.log(req.body);
+    if (!productId) {
       return res.status(400).json({ success: false, error: "缺少參數" });
     }
-
-    // ✅ 檢查是否已收藏這個商品
+    // 從資料庫中檢查該用戶是否已經喜歡該活動
     const checkSql = "SELECT * FROM pd_likes WHERE member_id = ? AND pd_id = ?";
-    const [rows] = await db.query(checkSql, [memberId, pdId]);
-
+    const [rows] = await db.query(checkSql, [memberId, productId]);
     if (rows.length > 0) {
-      // ✅ 取消收藏
-      await db.query("DELETE FROM pd_likes WHERE member_id = ? AND pd_id = ?", [memberId, pdId]);
+
+      // 如果已經喜歡，則取消喜歡
+      await db.query("DELETE FROM pd_likes WHERE member_id = ? AND pd_id = ?", [memberId, productId]);
       return res.json({ success: true, liked: false });
     } else {
-      // ✅ 加入收藏
-      await db.query("INSERT INTO pd_likes (member_id, pd_id) VALUES (?, ?)", [memberId, pdId]);
+      // 如果未喜歡，則新增最愛
+      await db.query("INSERT INTO pd_likes (member_id, pd_id) VALUES (?, ?)", [memberId, productId]);
       return res.json({ success: true, liked: true });
     }
   } catch (err) {
-    return res.status(401).json({ success: false, error: "Token 驗證失敗" });
-  }
-});
-
-// 檢查是否收藏這個商品
-router.get("/api/pd_likes/check", async (req, res) => {
-  const token = req.header('Authorization')?.split(' ')[1];
-  const pdId = req.query.productId;
-
-  if (!token || !pdId) {
-    return res.status(400).json({ success: false, error: "缺少 token 或 pdId" });
-  }
-
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_KEY);
-    const memberId = decoded.id;
-
-    const [rows] = await db.query(
-      "SELECT * FROM pd_likes WHERE member_id = ? AND product_id = ?",
-      [memberId, productId]
-    );
-
-    return res.json({ success: true, liked: rows.length > 0 });
-  } catch (err) {
+    console.log(err);
     return res.status(401).json({ success: false, error: "Token 驗證失敗" });
   }
 });
