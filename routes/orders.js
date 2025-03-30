@@ -6,7 +6,7 @@ const router = express.Router();
 const dateFormat = "YYYY-MM-DDTHH:mm";
 
 /**
- * 取得所有報名資料
+ * 取得所有訂單資料
  */
 router.get("/api", async (req, res) => {
   try {
@@ -24,21 +24,23 @@ router.get("/api", async (req, res) => {
           orders.order_status_id,             
           order_status.order_name AS status,             
           shipping_methods.id shippingMethodsId,             
-          shipping_methods.shipping_method,             
-          shipping_methods.shipping_fee,              
-          payment_methods.method, 
+          shipping_methods.shipping_method AS shippingMethod,             
+          shipping_methods.shipping_fee,    
+          payment_methods.id,          
+          payment_methods.method AS paymentMethod, 
           products.id as product_id,            
           products.product_name, 
           products.price, 
           products.size, 
           products.color, 
           products.image,
+          shopping_detail.order_id,
           shopping_detail.recipient_name,                       
           shopping_detail.recipient_phone,                      
           citys.city_name,                                
-          areas.name,                             
+          areas.name AS area_name,                             
           shopping_detail.detailed_address,                      
-          shopping_detail.store_name,                            
+          shopping_detail.store_name AS storeName,                            
           shopping_detail.store_address                          
           FROM orders  
       JOIN order_items  ON orders.id = order_items.order_id 
@@ -84,21 +86,23 @@ const getItemById = async (id) => {
           orders.order_status_id,             
           order_status.order_name AS status,             
           shipping_methods.id shippingMethodsId,             
-          shipping_methods.shipping_method,             
-          shipping_methods.shipping_fee,              
-          payment_methods.method, 
+          shipping_methods.shipping_method AS shippingMethod,             
+          shipping_methods.shipping_fee,    
+          payment_methods.id,          
+          payment_methods.method AS paymentMethod, 
           products.id as product_id,            
           products.product_name, 
           products.price, 
           products.size, 
           products.color, 
           products.image,
+          shopping_detail.order_id,
           shopping_detail.recipient_name,                       
           shopping_detail.recipient_phone,                      
           citys.city_name,                                
-          areas.name,                             
+          areas.name AS area_name,                             
           shopping_detail.detailed_address,                      
-          shopping_detail.store_name,                            
+          shopping_detail.store_name AS storeName,                            
           shopping_detail.store_address                          
           FROM orders  
       JOIN order_items  ON orders.id = order_items.order_id 
@@ -241,78 +245,44 @@ router.post("/api", async (req, res) => {
   }
 });
 
-
-
 /**
- * 刪除訂單資料
+ * 取消訂單
  */
-// router.delete("/api/:id", async (req, res) => {
-//   const output = {
-//     success: false,
-//     id: req.params.id,
-//     error: "",
-//   };
+router.put("/api/cancel/:id", async (req, res) => {
+  const orderId = req.params.id;
 
-//   const { success, data, error } = await getItemById(req.params.id);
-//   if (!success) {
-//     output.error = error;
-//     return res.json(output);
-//   }
+  try {
+    // 1. 取得該訂單的狀態
+    const sql = `SELECT order_status_id FROM orders WHERE id = ?`;
+    const [rows] = await db.query(sql, [orderId]);
 
-//   const delete_sql = `DELETE FROM orders WHERE id = ?`;
-//   try {
-//     const [result] = await db.query(delete_sql, [data.id]);
-//     output.result = result; // 除錯用意
-//     output.success = !!result.affectedRows;
-//   } catch (error) {
-//     console.error("刪除訂單資料時發生錯誤: ", error);
-//     output.error = "伺服器錯誤";
-//   }
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, error: "找不到該筆訂單" });
+    }
 
-//   return res.json(output);
-// });
+    const orderStatusId = rows[0].order_status_id;
 
-/**
- * 新增訂單資料
- */
-// router.post("/api", async (req, res) => {
-//   console.log("收到的 req.body:", req.body);
+    // 2. 判斷該訂單是否可以取消
+    // 假設「待出貨」的狀態 ID 是 1，可以取消
+    if (orderStatusId !== 1) {
+      return res.status(400).json({ success: false, error: "此訂單無法取消" });
+    }
 
-//   const { member_id, activity_id, num, notes } = req.body;
-//   const parsedNum = Number(num);
+    // 3. 更新訂單狀態為已取消（假設取消狀態 ID 是 5）
+    const cancelSql = `UPDATE orders SET order_status_id = 5 WHERE id = ?`;
+    const [updateResult] = await db.query(cancelSql, [orderId]);
 
-//   if (!member_id || !activity_id || isNaN(parsedNum)) {
-//     return res.status(400).json({ success: false, error: "缺少必要欄位" });
-//   }
+    if (updateResult.affectedRows === 0) {
+      return res.status(400).json({ success: false, error: "取消訂單失敗" });
+    }
 
-//   try {
-//     const sql = `INSERT INTO registered (member_id, activity_id, num, notes) VALUES (?, ?, ?, ?);`;
-//     console.log("SQL Query: ", sql, [member_id, activity_id, num, notes]); // 測試輸出
-//     const [result] = await db.query(sql, [member_id, activity_id, num, notes]);
+    return res.json({ success: true, message: "訂單已取消" });
+  } catch (error) {
+    console.error("取消訂單時發生錯誤: ", error);
+    return res.status(500).json({ success: false, error: "伺服器錯誤，請稍後再試" });
+  }
+});
 
-//     res.json({ success: true, result });
-//   } catch (error) {
-//     console.error("新增報名資料時發生錯誤: ", error);
-//     res.status(500).json({ success: false, error: "伺服器錯誤" });
-//   }
-// });
 
-/**
- * 更新報名資料
- */
-// router.put("/api/:id", async (req, res) => {
-//   const { id } = req.params;
-//   const { num, notes } = req.body;
-
-//   try {
-//     const sql = `UPDATE registered SET num = ?, notes = ? WHERE id = ?;`;
-//     const [result] = await db.query(sql, [num, notes, id]);
-
-//     res.json({ success: true, result });
-//   } catch (error) {
-//     console.error("更新報名資料時發生錯誤: ", error);
-//     res.status(500).json({ success: false, error: "伺服器錯誤" });
-//   }
-// });
 
 export default router;
