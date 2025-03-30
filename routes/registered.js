@@ -91,30 +91,85 @@ router.get("/api/:id", async (req, res) => {
 /**
  * 刪除報名資料
  */
-router.delete("/api/:id", async (req, res) => {
-  const output = {
-    success: false,
-    id: req.params.id,
-    error: "",
-  };
+// router.delete("/api/:id", async (req, res) => {
+//   const output = {
+//     success: false,
+//     id: req.params.id,
+//     error: "",
+//   };
 
-  const { success, data, error } = await getItemById(req.params.id);
-  if (!success) {
-    output.error = error;
+//   const { success, data, error } = await getItemById(req.params.id);
+//   if (!success) {
+//     output.error = error;
+//     return res.json(output);
+//   }
+
+//   const delete_sql = `DELETE FROM registered WHERE id = ?`;
+//   try {
+//     const [result] = await db.query(delete_sql, [data.id]);
+//     output.result = result; // 除錯用意
+//     output.success = !!result.affectedRows;
+//   } catch (error) {
+//     console.error("刪除報名資料時發生錯誤: ", error);
+//     output.error = "伺服器錯誤";
+//   }
+
+//   return res.json(output);
+// });
+
+// routes/registered.js
+router.delete("/:registeredId", async (req, res) => {
+  const registeredId = +req.params.registeredId || 0;
+  const { cancel_reason } = req.body;
+
+  const output = { success: false };
+
+  if (!cancel_reason) {
+    output.error = "請提供取消原因";
     return res.json(output);
   }
 
-  const delete_sql = `DELETE FROM registered WHERE id = ?`;
   try {
-    const [result] = await db.query(delete_sql, [data.id]);
-    output.result = result; // 除錯用意
-    output.success = !!result.affectedRows;
-  } catch (error) {
-    console.error("刪除報名資料時發生錯誤: ", error);
+    const [rows] = await db.query(
+      `SELECT r.*, al.founder_id, al.activity_name
+       FROM registered r
+       JOIN activity_list al ON r.activity_id = al.al_id
+       WHERE r.id = ?`,
+      [registeredId]
+    );
+
+    if (!rows.length) {
+      output.error = "找不到報名資料";
+      return res.json(output);
+    }
+
+    const record = rows[0];
+
+    const [result] = await db.query(
+      `DELETE FROM registered WHERE id = ?`,
+      [registeredId]
+    );
+
+    if (result.affectedRows !== 1) {
+      output.error = "刪除失敗";
+      return res.json(output);
+    }
+
+    // ✅ 寫入通知訊息（含取消原因）
+    const content = `會員 ID ${record.member_id} 已取消報名活動「${record.activity_name}」。\n取消原因：${cancel_reason}`;
+
+    await db.query(
+      `INSERT INTO messages (member_id, title, content) VALUES (?, ?, ?)`,
+      [record.founder_id, "參加者取消報名通知", content]
+    );
+
+    output.success = true;
+  } catch (err) {
+    console.error("取消報名失敗", err);
     output.error = "伺服器錯誤";
   }
 
-  return res.json(output);
+  res.json(output);
 });
 
 /**
