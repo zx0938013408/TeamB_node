@@ -4,7 +4,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import upload from "../utils/upload-images.js";
 import multer from "multer";
-import cron from 'node-cron';
+// import cron from 'node-cron';
 
 const app = express();
 
@@ -14,38 +14,38 @@ const app = express();
 const router = express.Router();
 
 // 定時任務，每天執行一次
-cron.schedule('0 0 * * *', async () => {
-  try {
-    // 查找未來 7 天內的所有活動
-    const sql = `
-      SELECT al.al_id, al.activity_name, r.member_id
-      FROM activity_list al
-      JOIN registered r ON al.al_id = r.activity_id
-      WHERE al.activity_time BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 7 DAY);
-    `;
-    const [activities] = await db.query(sql);
+// cron.schedule('0 0 * * *', async () => {
+//   try {
+//     // 查找未來 7 天內的所有活動
+//     const sql = `
+//       SELECT al.al_id, al.activity_name, r.member_id
+//       FROM activity_list al
+//       JOIN registered r ON al.al_id = r.activity_id
+//       WHERE al.activity_time BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 7 DAY);
+//     `;
+//     const [activities] = await db.query(sql);
 
-    // 為每個用戶創建通知
-    const notifications = activities.map(activity => [
-      activity.member_id,
-      activity.al_id,
-      `您有一個即將舉行的活動: ${activity.activity_name}`,
-      'unread', // 設為未讀
-    ]);
+//     // 為每個用戶創建通知
+//     const notifications = activities.map(activity => [
+//       activity.member_id,
+//       activity.al_id,
+//       `您有一個即將舉行的活動: ${activity.activity_name}`,
+//       'unread', // 設為未讀
+//     ]);
 
-    // 批量插入通知到 `notifications` 表
-    if (notifications.length > 0) {
-      const insertSql = `
-        INSERT INTO notifications (user_id, activity_id, message, status)
-        VALUES ?;
-      `;
-      await db.query(insertSql, [notifications]);
-      console.log('通知創建成功');
-    }
-  } catch (error) {
-    console.error('定時任務錯誤:', error);
-  }
-});
+//     // 批量插入通知到 `notifications` 表
+//     if (notifications.length > 0) {
+//       const insertSql = `
+//         INSERT INTO notifications (user_id, activity_id, message, status)
+//         VALUES ?;
+//       `;
+//       await db.query(insertSql, [notifications]);
+//       console.log('通知創建成功');
+//     }
+//   } catch (error) {
+//     console.error('定時任務錯誤:', error);
+//   }
+// });
 
 
 
@@ -564,78 +564,27 @@ res.json(output);
 
 
 //取得用戶通知
-router.get("/notifications/:member_id", checkAuth, async (req, res) => {
+// router.get("/notifications/:member_id", checkAuth, async (req, res) => {
 
-   // **檢查 7 天內的活動**
-   const activitySql = `
-   SELECT al.al_id, al.activity_name, al.activity_time
-   FROM activity_list al
-   JOIN registered r ON al.al_id = r.activity_id
-   WHERE r.member_id = ? 
-   AND al.activity_time BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 7 DAY);
- `;
+//    // **檢查 7 天內的活動**
+//    const activitySql = `
+//    SELECT al.al_id, al.activity_name, al.activity_time
+//    FROM activity_list al
+//    JOIN registered r ON al.al_id = r.activity_id
+//    WHERE r.member_id = ? 
+//    AND al.activity_time BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 7 DAY);
+//  `;
  
- const {member_id} = req.params;
- const [activityRows] = await db.query(activitySql, [member_id]);
+//  const {member_id} = req.params;
+//  const [activityRows] = await db.query(activitySql, [member_id]);
 
- res.json({
-  success:true,
-  notifications:activityRows
- });
+//  res.json({
+//   success:true,
+//   notifications:activityRows
+//  });
  
-//  if (activityRows.length > 0) {
-//    // **新增通知**
-//    const notificationSql = `
-//      INSERT INTO notifications (user_id, activity_id, notification_type, status)
-//      VALUES ?;
-//    `;
-//    const notifications = activityRows.map(activity => [
-//      row.id, activity.al_id, '活動通知', 'unread'
-//    ]);
-//    await db.query(notificationSql, [notifications]);
-//  }
- 
+// });
 
-  // const sql = `
-  //   SELECT n.id AS notification_id, n.activity_id, al.activity_name, al.activity_time, n.status
-  //   FROM notifications n
-  //   JOIN activity_list al ON n.activity_id = al.al_id
-  //   WHERE n.user_id = ? AND n.status = 'unread';
-  // `;
-
-  // const [rows] = await db.query(sql, [userId]);
-
-  // res.json({
-  //   success: true,
-  //   notifications: rows,
-  // });
-});
-
-
-//標記通知為已讀
-router.post("/notifications/read", checkAuth, async (req, res) => {
-  const userId = req.user.id; // 從 JWT 解析出 user_id
-
-  const sql = `
-    UPDATE notifications 
-    SET status = 'read' 
-    WHERE user_id = ? 
-    AND status = 'unread';
-  `;
-
-  await db.query(sql, [userId]);
-
-  res.json({ success: true, message: "通知已標記為已讀" });
-});
-
-
-//亦自動刪除過期通知
-router.delete("/notifications/expired", async (req, res) => {
-  const sql = `DELETE FROM notifications WHERE created_at < DATE_SUB(NOW(), INTERVAL 7 DAY)`;
-  await db.query(sql);
-
-  res.json({ success: true, message: "過期通知已刪除" });
-});
 
 
 
