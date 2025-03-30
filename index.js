@@ -81,6 +81,7 @@ app.use("/ecpay-test-only", ecpayRouter);
 app.use("/orders", ordersRouter);
 app.use("/court", courtRouter);
 app.use("/messages", messageRouter);
+app.use("/api/messages", messageRouter);
 
 
 
