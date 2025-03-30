@@ -14,15 +14,18 @@ router.get("/api", async (req, res) => {
       SELECT 
         registered.id, 
         registered.member_id, 
+        members.name AS member_name, 
         registered.activity_id, 
+        activity_list.activity_name, 
         registered.num, 
         registered.notes, 
         registered.registered_time, 
-        members.name AS member_name, 
-        activity_list.activity_name 
+        founder_id.id AS founder_id,
+        founder_id.name AS founder_name
       FROM registered
       JOIN members ON registered.member_id = members.id
       JOIN activity_list ON registered.activity_id = activity_list.al_id
+      JOIN members	founder_id  ON activity_list.founder_id  = founder_id.id
       ORDER BY registered.id DESC
     `;
     const [rows] = await db.query(sql);
@@ -219,6 +222,43 @@ router.put("/api/:id", async (req, res) => {
   } catch (error) {
     console.error("更新報名資料錯誤:", error);
     res.status(500).json({ success: false, error: "伺服器錯誤" });
+  }
+});
+
+
+// 取得團主創立的資料
+router.get("/activity/:al_id", async (req, res) => {
+  const { al_id } = req.params;
+  try {
+    const sql = `
+      SELECT 
+        r.id AS registered_id,
+        r.member_id,
+        m.name AS member_name,
+        r.num,
+        r.notes,
+        r.registered_time,
+        a.activity_name,
+        a.payment,
+        fa.name founder_name,
+        (
+          SELECT SUM(num)
+          FROM registered
+          WHERE activity_id = r.activity_id
+        ) AS total_registered,
+        a.need_num
+      FROM registered r
+      JOIN members m ON r.member_id = m.id
+      JOIN activity_list a ON r.activity_id = a.al_id
+      JOIN members fa ON a.founder_id = fa.id
+      WHERE r.activity_id = ?
+      ORDER BY r.registered_time ASC
+    `;
+    const [rows] = await db.query(sql, [al_id]);
+    res.json({ success: true, rows });
+  } catch (err) {
+    console.error("❌ 查詢報名失敗", err);
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
