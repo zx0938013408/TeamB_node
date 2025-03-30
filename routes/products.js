@@ -4,7 +4,7 @@ import fs from "node:fs/promises";
 import { z } from "zod";
 import upload from "../utils/upload-images.js";
 const router = express.Router();
-import jwt from 'jsonwebtoken';
+import jwt from "jsonwebtoken";
 
 const pdRouter = express.Router();
 
@@ -505,35 +505,78 @@ pdRouter.put("/api/:id", upload.single("image"), async (req, res) => {
 
 //收藏商品
 pdRouter.post("/api/pd_likes", async (req, res) => {
-  const token = req.header('Authorization')?.split(' ')[1]; // 從 Authorization 標頭中獲取 token
-  
+  const token = req.header("Authorization")?.split(" ")[1]; // 從 Authorization 標頭中獲取 token
+
   if (!token) {
     return res.status(401).json({ success: false, error: "未提供有效的Token" });
   }
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_KEY); // 驗證 token
-    const memberId = decoded.id;  // 使用解碼後的 `id` 作為 memberId
+    const memberId = decoded.id; // 使用解碼後的 `id` 作為 memberId
     const { productId } = req.body;
     console.log(req.body);
     if (!productId) {
       return res.status(400).json({ success: false, error: "缺少參數" });
     }
     // 從資料庫中檢查該用戶是否已經喜歡該活動
-    const checkSql = "SELECT * FROM pd_likes WHERE member_id = ? AND pd_id = ?";
-    const [rows] = await db.query(checkSql, [memberId, productId]);
-    if (rows.length > 0) {
+    // const checkSql = "SELECT * FROM pd_likes WHERE member_id = ? AND pd_id = ?";
+    // const [rows] = await db.query(checkSql, [memberId, productId]);
 
+    const isLiked = await CheckIfLiked(memberId, productId);
+
+    if (isLiked) {
       // 如果已經喜歡，則取消喜歡
-      await db.query("DELETE FROM pd_likes WHERE member_id = ? AND pd_id = ?", [memberId, productId]);
+      await db.query("DELETE FROM pd_likes WHERE member_id = ? AND pd_id = ?", [
+        memberId,
+        productId,
+      ]);
       return res.json({ success: true, liked: false });
     } else {
       // 如果未喜歡，則新增最愛
-      await db.query("INSERT INTO pd_likes (member_id, pd_id) VALUES (?, ?)", [memberId, productId]);
+      await db.query("INSERT INTO pd_likes (member_id, pd_id) VALUES (?, ?)", [
+        memberId,
+        productId,
+      ]);
       return res.json({ success: true, liked: true });
     }
   } catch (err) {
     console.log(err);
+    return res.status(401).json({ success: false, error: "Token 驗證失敗" });
+  }
+});
+
+// 重刷頁面確認是否已收藏-方法
+async function CheckIfLiked(memberId, productId) {
+  const sql = "SELECT * FROM pd_likes WHERE member_id = ? AND pd_id = ?";
+  const [rows] = await db.query(sql, [memberId, productId]);
+  return rows.length > 0;
+}
+
+//確認是否已收藏
+pdRouter.get("/api/pd_likes/check/:pdId", async (req, res) => {
+
+  const token = req.header("Authorization")?.split(" ")[1]; // 從 Authorization 標頭中獲取 token
+
+  if (!token) {
+    return res.status(401).json({ success: false, error: "未提供有效的Token" });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_KEY); // 驗證 token
+    const memberId = decoded.id; // 使用解碼後的 `id` 作為 memberId
+    const productId = req.params.pdId;
+
+    if (!productId) {
+      return res.status(400).json({ success: false, error: "缺少 productId 參數" });
+    }
+
+    const isLiked = await CheckIfLiked(memberId, productId);
+
+    console.log(isLiked);
+    return res.json({ success: true, liked: isLiked });
+  } catch (err) {
+    console.error(err);
     return res.status(401).json({ success: false, error: "Token 驗證失敗" });
   }
 });
