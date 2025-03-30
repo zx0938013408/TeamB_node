@@ -131,9 +131,10 @@ router.delete("/:registeredId", async (req, res) => {
 
   try {
     const [rows] = await db.query(
-      `SELECT r.*, al.founder_id, al.activity_name
+      `SELECT r.*, al.founder_id, al.activity_name,m.name
        FROM registered r
        JOIN activity_list al ON r.activity_id = al.al_id
+       JOIN members m ON r.member_id = m.id
        WHERE r.id = ?`,
       [registeredId]
     );
@@ -156,7 +157,7 @@ router.delete("/:registeredId", async (req, res) => {
     }
 
     // ✅ 寫入通知訊息（含取消原因）
-    const content = `會員 ID ${record.member_id} 已取消報名活動「${record.activity_name}」。\n取消原因：${cancel_reason}`;
+    const content = `會員 ${record.name} 已取消報名活動「${record.activity_name}」。\n取消原因：${cancel_reason}`;
 
     await db.query(
       `INSERT INTO messages (member_id, title, content) VALUES (?, ?, ?)`,
