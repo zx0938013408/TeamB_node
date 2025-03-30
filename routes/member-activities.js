@@ -15,6 +15,11 @@ router.get("/:memberId/activities", async (req, res) => {
     const [rows] = await db.query(
       `SELECT 
     r.id registered_id,
+    r.member_id,
+    reg_member.name AS registered_member_name,
+    r.num registered_item_num,
+    r.notes,
+    r.registered_time,
     al.al_id,
     al.activity_name,
     al.activity_time,
@@ -38,6 +43,7 @@ router.get("/:memberId/activities", async (req, res) => {
   JOIN sport_type st ON al.sport_type_id = st.id
   JOIN court_info ci ON al.court_id = ci.id
   JOIN members m ON al.founder_id = m.id
+  JOIN members reg_member ON r.member_id = reg_member.id
   LEFT JOIN favorites f ON f.activity_id = al.al_id AND f.member_id = ?
   WHERE r.member_id = ?
   GROUP BY registered_id, al.al_id, al.activity_name, st.sport_name, ci.name;`,
