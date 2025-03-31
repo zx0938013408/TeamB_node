@@ -34,7 +34,12 @@ const getItemById = async (id) => {
     return output;
   }
   const r_sql = `
-    SELECT pd.*, c.categories_name FROM products AS pd LEFT JOIN categories AS c on pd.category_id = c.id WHERE pd.id = ?`;
+    SELECT pd.*, c.categories_name, GROUP_CONCAT(v.size) AS sizes, GROUP_CONCAT(v.stock) AS stocks
+    FROM products AS pd 
+    LEFT JOIN categories AS c on pd.category_id = c.id
+    LEFT JOIN pd_variants v ON pd.id = v.product_id
+    WHERE pd.id = ?
+    GROUP BY pd.id`;
 
   const [rows] = await db.query(r_sql, [pd_id]);
   if (!rows.length) {
@@ -208,7 +213,7 @@ const getListData = async (req) => {
    LEFT JOIN product_sports ps ON pd.id = ps.product_id
    LEFT JOIN sport_type s ON pd.sport_type_id = s.id
    LEFT JOIN product_themes pt ON pd.id = pt.product_id
-LEFT JOIN pd_themes t ON pt.theme_id = t.id
+  LEFT JOIN pd_themes t ON pt.theme_id = t.id
 
    ${where} `;
   const [[{ totalRows }]] = await db.query(t_sql, params); // 取得總筆數
@@ -225,7 +230,7 @@ LEFT JOIN pd_themes t ON pt.theme_id = t.id
 
   // 取得資料庫需要的表裡的資料
   const sql = `
-  SELECT DISTINCT pd.*, c.categories_name, l.like_id
+  SELECT DISTINCT pd.*, c.categories_name, l.like_id, v.size, v.stock
   FROM products pd 
   LEFT JOIN categories c ON pd.category_id = c.id
   LEFT JOIN product_sports ps ON pd.id = ps.product_id
@@ -233,6 +238,7 @@ LEFT JOIN pd_themes t ON pt.theme_id = t.id
   LEFT JOIN product_themes pt ON pd.id = pt.product_id
   LEFT JOIN pd_themes t ON pt.theme_id = t.id
   LEFT JOIN ( SELECT * FROM pd_likes WHERE member_id=? ) l ON pd.id=l.pd_id
+  LEFT JOIN pd_variants v ON pd.id = v.product_id
   ${where} 
   ${orderBy}
   LIMIT ?, ?`;
@@ -603,7 +609,7 @@ pdRouter.get("/api/member/:memberId", async (req, res) => {
 });
 
 // 取消收藏
-pdRouter.delete('/api/pd_likes/:productId', async (req, res) => {
+pdRouter.delete("/api/pd_likes/:productId", async (req, res) => {
   const token = req.header("Authorization")?.split(" ")[1]; // 從標頭中獲取 token
   if (!token) {
     return res.status(401).json({ success: false, error: "未提供有效的Token" });
@@ -629,6 +635,5 @@ pdRouter.delete('/api/pd_likes/:productId', async (req, res) => {
     res.status(401).json({ success: false, error: "Token 無效或已過期" });
   }
 });
-
 
 export default pdRouter;
