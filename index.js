@@ -220,6 +220,7 @@ wss.on('connection', (ws) => {
         ws.memberId = data.memberId;
         wsClients.set(data.memberId, ws);
         console.log(`🔵 綁定用戶 ${data.memberId} WebSocket`);
+        console.log("📦 目前連線的會員清單：", [...wsClients.keys()]);
       }
     } catch (err) {
       console.log('❌ 無法解析 WebSocket 訊息', err);
