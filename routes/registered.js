@@ -1,6 +1,8 @@
 import express from "express";
 import moment from "moment-timezone";
 import db from "../utils/connect-mysql.js";
+import { notifyUser } from '../utils/ws-push.js'; // 注意路徑依專案位置調整
+
 
 const router = express.Router();
 const dateFormat = "YYYY-MM-DDTHH:mm";
@@ -221,6 +223,7 @@ router.post("/api", async (req, res) => {
       `INSERT INTO messages (member_id, title, content) VALUES (?, ?, ?)`,
       [founderId, messageTitle, messageContent]
     );
+    notifyUser(founderId, { title: messageTitle, content: messageContent });
 
     res.json({ success: true, result });
   } catch (error) {
