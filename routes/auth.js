@@ -869,6 +869,30 @@ router.post("/api/reset-password", async (req, res) => {
 
 
 
+router.post("/submit-contact-form", async (req, res) => {
+  const { name, email, message } = req.body;
+
+  // 檢查必填欄位是否有資料
+  if (!name || !email || !message) {
+    return res.status(400).json({ message: "所有欄位都是必填的" });
+  }
+
+  try {
+    // 插入表單資料到資料庫
+    const query = `
+      INSERT INTO contact_form_submissions (name, email, message)
+      VALUES (?, ?, ?)
+    `;
+    const [result] = await db.query(query, [name, email, message]);
+
+    // 成功後回應
+    res.status(200).json({ message: "表單已成功提交" });
+  } catch (error) {
+    console.error("錯誤:", error);
+    res.status(500).json({ message: "提交表單時出現錯誤，請稍後再試" });
+  }
+});
+
 
 
 
