@@ -1,8 +1,27 @@
 import express from "express";
 import db from "../utils/connect-mysql.js";
-
 const router = express.Router();
+// 新增留言
+router.post("/activity-board", async (req, res) => {
+  const { activity_id, member_id, message, is_owner } = req.body;
 
+  if (!activity_id || !member_id || !message) {
+    return res.status(400).json({ success: false, error: "缺少必要欄位" });
+  }
+
+  try {
+    const [result] = await db.query(
+      `INSERT INTO activity_message_board (activity_id, member_id, message, is_owner)
+       VALUES (?, ?, ?, ?)`,
+      [activity_id, member_id, message, is_owner ? 1 : 0]
+    );
+
+    res.json({ success: true, insertId: result.insertId });
+  } catch (err) {
+    console.error("新增留言失敗:", err);
+    res.status(500).json({ success: false, error: "留言新增失敗" });
+  }
+});
 // 取得會員的所有訊息
 router.get("/:memberId", async (req, res) => {
   const memberId = +req.params.memberId || 0;
@@ -57,26 +76,6 @@ router.get("/activity-board/:activityId", async (req, res) => {
   }
 });
 
-// 新增留言
-router.post("/activity-board", async (req, res) => {
-  const { activity_id, member_id, message, is_owner } = req.body;
 
-  if (!activity_id || !member_id || !message) {
-    return res.status(400).json({ success: false, error: "缺少必要欄位" });
-  }
-
-  try {
-    const [result] = await db.query(
-      `INSERT INTO activity_message_board (activity_id, member_id, message, is_owner)
-       VALUES (?, ?, ?, ?)`,
-      [activity_id, member_id, message, is_owner ? 1 : 0]
-    );
-
-    res.json({ success: true, insertId: result.insertId });
-  } catch (err) {
-    console.error("新增留言失敗:", err);
-    res.status(500).json({ success: false, error: "留言新增失敗" });
-  }
-});
 
 export default router;
