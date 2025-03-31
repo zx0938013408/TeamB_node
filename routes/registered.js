@@ -168,7 +168,11 @@ router.delete("/:registeredId", async (req, res) => {
       `INSERT INTO messages (member_id, title, content) VALUES (?, ?, ?)`,
       [record.founder_id, "參加者取消報名通知", content]
     );
-
+    notifyUser(record.founder_id, {
+      title: "參加者取消報名通知",
+      content,
+    });
+    
     output.success = true;
   } catch (err) {
     console.error("取消報名失敗", err);

@@ -1,5 +1,6 @@
 import db from "../utils/connect-mysql.js";
 import moment from "moment";
+import { notifyUser } from "../utils/ws-push.js";
 
 // 計算明天日期
 const tomorrow = moment().add(1, "day").format("YYYY-MM-DD");
@@ -20,6 +21,7 @@ const sendReminderMessages = async () => {
       WHERE DATE(a.activity_time) = ?`,
       [tomorrow]
     );
+    notifyUser(member_id, { title, content });
 
     // 對每個報名者發訊息
     for (const row of rows) {
