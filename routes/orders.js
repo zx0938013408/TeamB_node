@@ -41,7 +41,9 @@ router.get("/api", async (req, res) => {
           areas.name AS area_name,                             
           shopping_detail.detailed_address,                      
           shopping_detail.store_name AS storeName,                            
-          shopping_detail.store_address                          
+          shopping_detail.store_address,
+          pd_variants.product_id,
+          pd_variants.size                          
           FROM orders  
       JOIN order_items  ON orders.id = order_items.order_id 
       LEFT JOIN products  ON order_items.item_id = products.id
@@ -52,6 +54,7 @@ router.get("/api", async (req, res) => {
       LEFT JOIN citys ON shopping_detail.city_id = citys.city_id
       LEFT JOIN areas ON shopping_detail.area_id = areas.area_id 
       LEFT JOIN members ON orders.members_id = members.id
+      LEFT JOIN pd_variants ON products.id = pd_variants.product_id
       ORDER BY orders.created_at DESC
     `;
     const [rows] = await db.query(sql);
@@ -74,7 +77,7 @@ const getItemById = async (id) => {
   };
 
   const sql = `
-      SELECT DISTINCT
+        SELECT DISTINCT
           order_items.id AS items_id,
           orders.id AS orderId,
           members.id AS member_id, 
@@ -103,7 +106,9 @@ const getItemById = async (id) => {
           areas.name AS area_name,                             
           shopping_detail.detailed_address,                      
           shopping_detail.store_name AS storeName,                            
-          shopping_detail.store_address                          
+          shopping_detail.store_address,
+          pd_variants.product_id,
+          pd_variants.size                          
           FROM orders  
       JOIN order_items  ON orders.id = order_items.order_id 
       LEFT JOIN products  ON order_items.item_id = products.id
@@ -114,6 +119,7 @@ const getItemById = async (id) => {
       LEFT JOIN citys ON shopping_detail.city_id = citys.city_id
       LEFT JOIN areas ON shopping_detail.area_id = areas.area_id 
       LEFT JOIN members ON orders.members_id = members.id
+      LEFT JOIN pd_variants ON products.id = pd_variants.product_id
     WHERE orders.id = ?
   `;
 
