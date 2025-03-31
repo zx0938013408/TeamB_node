@@ -18,7 +18,15 @@ import ecpayRouter from "./routes/ecpay-test-only.js"
 import ordersRouter from "./routes/orders.js"
 import courtRouter from "./routes/court.js"
 import messageRouter from "./routes/messages.js";
+import cron from "node-cron";
+import sendReminderMessages from "./cron/activity-reminder.js";
 
+// cron 定時任務排程
+// 每天凌晨 1 點執行一次
+cron.schedule("0 1 * * *", () => {
+  console.log("⏰ 執行活動提醒任務");
+  sendReminderMessages();
+});
 
 const MysqlStore = mysql_session(session);
 const sessionStore = new MysqlStore({}, db);

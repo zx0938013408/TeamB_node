@@ -190,9 +190,37 @@ router.post("/api", async (req, res) => {
   }
 
   try {
+    // 插入報名資料
     const sql = `INSERT INTO registered (member_id, activity_id, num, notes) VALUES (?, ?, ?, ?);`;
-    console.log("SQL Query: ", sql, [member_id, activity_id, num, notes]); // 測試輸出
     const [result] = await db.query(sql, [member_id, activity_id, num, notes]);
+
+    // 查詢主辦人和活動名稱
+    const [activityRows] = await db.query(
+      `SELECT founder_id, activity_name FROM activity_list WHERE al_id = ?`,
+      [activity_id]
+    );
+    if (!activityRows.length) {
+      return res.status(404).json({ success: false, error: "活動不存在" });
+    }
+
+    const founderId = activityRows[0].founder_id;
+    const activityName = activityRows[0].activity_name;
+
+    // 查詢報名者名稱
+    const [memberRows] = await db.query(
+      `SELECT name FROM members WHERE id = ?`,
+      [member_id]
+    );
+    const memberName = memberRows[0]?.name || "某會員";
+
+    // 發送訊息給主辦人，包含報名人數
+    const messageTitle = "有新會員報名您的活動";
+    const messageContent = `${memberName} 報名了您的活動「${activityName}」，共 ${parsedNum} 人參加。`;
+
+    await db.query(
+      `INSERT INTO messages (member_id, title, content) VALUES (?, ?, ?)`,
+      [founderId, messageTitle, messageContent]
+    );
 
     res.json({ success: true, result });
   } catch (error) {
