@@ -230,18 +230,26 @@ const getListData = async (req) => {
 
   // 取得資料庫需要的表裡的資料
   const sql = `
-  SELECT DISTINCT pd.*, c.categories_name, l.like_id, v.size, v.stock
-  FROM products pd 
-  LEFT JOIN categories c ON pd.category_id = c.id
-  LEFT JOIN product_sports ps ON pd.id = ps.product_id
-  LEFT JOIN sport_type s ON pd.sport_type_id = s.id
-  LEFT JOIN product_themes pt ON pd.id = pt.product_id
-  LEFT JOIN pd_themes t ON pt.theme_id = t.id
-  LEFT JOIN ( SELECT * FROM pd_likes WHERE member_id=? ) l ON pd.id=l.pd_id
-  LEFT JOIN pd_variants v ON pd.id = v.product_id
-  ${where} 
-  ${orderBy}
-  LIMIT ?, ?`;
+  SELECT 
+  pd.*, 
+  c.categories_name, 
+  MAX(l.like_id) AS like_id, 
+  GROUP_CONCAT(v.size) AS sizes,
+  GROUP_CONCAT(v.stock) AS stocks
+FROM products pd 
+LEFT JOIN categories c ON pd.category_id = c.id
+LEFT JOIN product_sports ps ON pd.id = ps.product_id
+LEFT JOIN sport_type s ON pd.sport_type_id = s.id
+LEFT JOIN product_themes pt ON pd.id = pt.product_id
+LEFT JOIN pd_themes t ON pt.theme_id = t.id
+LEFT JOIN (
+  SELECT * FROM pd_likes WHERE member_id = ?
+) l ON pd.id = l.pd_id
+LEFT JOIN pd_variants v ON pd.id = v.product_id
+${where}
+GROUP BY pd.id
+${orderBy}
+LIMIT ?, ?`;
 
   // [rows] = await db.query(sql, [req.my_jwt?.id || req.session.admin?.member_id || 0, (page - 1) * perPage, perPage]);
 
