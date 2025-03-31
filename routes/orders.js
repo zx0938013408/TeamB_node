@@ -12,8 +12,9 @@ router.get("/api", async (req, res) => {
   try {
     const sql = 
      `
-         SELECT DISTINCT
+   SELECT DISTINCT
           order_items.id AS items_id,
+          order_items.variant_id,
           orders.id AS orderId,
           members.id AS member_id, 
           members.name AS member_name,
@@ -41,8 +42,9 @@ router.get("/api", async (req, res) => {
           shopping_detail.detailed_address,                      
           shopping_detail.store_name AS storeName,                            
           shopping_detail.store_address,
+          pd_variants.id AS variant_id,
           pd_variants.product_id,
-          pd_variants.size AS variant_size 
+          pd_variants.size AS size 
           FROM orders  
       JOIN order_items  ON orders.id = order_items.order_id 
       
@@ -77,8 +79,9 @@ const getItemById = async (id) => {
   };
 
   const sql = `
-             SELECT DISTINCT
+           SELECT DISTINCT
           order_items.id AS items_id,
+          order_items.variant_id,
           orders.id AS orderId,
           members.id AS member_id, 
           members.name AS member_name,
@@ -106,8 +109,9 @@ const getItemById = async (id) => {
           shopping_detail.detailed_address,                      
           shopping_detail.store_name AS storeName,                            
           shopping_detail.store_address,
+          pd_variants.id AS variant_id,
           pd_variants.product_id,
-          pd_variants.size AS variant_size 
+          pd_variants.size AS size 
           FROM orders  
       JOIN order_items  ON orders.id = order_items.order_id 
       
@@ -120,7 +124,6 @@ const getItemById = async (id) => {
       LEFT JOIN members ON orders.members_id = members.id
       LEFT JOIN products  ON order_items.item_id = products.id
       LEFT JOIN pd_variants ON order_items.variant_id = pd_variants.id
-      
     WHERE orders.id = ?
   `;
 
@@ -172,7 +175,7 @@ router.post("/api", async (req, res) => {
     area_id,
     detailed_address,
     store_name,
-    store_address
+    store_address,
   } = req.body;
 
   // 必填欄位檢查
@@ -218,9 +221,9 @@ router.post("/api", async (req, res) => {
 
     // 2️. 插入訂單項目
     const orderItemSql = `
-      INSERT INTO order_items (order_id, item_id, quantity) VALUES ?;
+      INSERT INTO order_items (order_id, item_id, quantity, variant_id) VALUES ?;
     `;
-    const orderItemValues = order_items.map(item => [orderId, item.item_id, item.quantity]);
+    const orderItemValues = order_items.map(item => [orderId, item.item_id, item.quantity,item.variant_id]);
     await connection.query(orderItemSql, [orderItemValues]);
 
     // 3️. 插入購物細節（收件人資訊 & 配送資訊）
