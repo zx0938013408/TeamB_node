@@ -2,6 +2,8 @@
 import express from "express";
 import db from "../utils/connect-mysql.js";
 import upload from "../utils/upload-images.js";
+import { notifyUser } from "../utils/ws-push.js";
+
 const router = express.Router();
 // 查詢會員已報名活動
 router.get("/:memberId/activities", async (req, res) => {
@@ -316,7 +318,7 @@ router.get("/activity/:id", async (req, res) => {
 // 刪除活動
 router.delete("/:alId", async (req, res) => {
   const alId = +req.params.alId || 0;
-  const { cancel_reason } = req.body; // 前端要傳取消原因
+  const { cancel_reason } = req.body;
 
   const output = { success: false, error: "" };
 
@@ -326,31 +328,29 @@ router.delete("/:alId", async (req, res) => {
   }
 
   try {
-    // 1. 寫入取消原因（不馬上刪除）
     await db.query("UPDATE activity_list SET cancel_reason = ? WHERE al_id = ?", [
       cancel_reason,
       alId,
     ]);
 
-    // 2. 查詢已報名會員
-    const [members] = await db.query(
-      `SELECT DISTINCT member_id FROM registered WHERE activity_id = ?`,
+    const [rows] = await db.query(
+      `SELECT member_id FROM registered WHERE activity_id = ?`,
       [alId]
     );
 
-    // 3. 發送訊息
-    for (const member of members) {
+    const uniqueMemberIds = [...new Set(rows.map(row => row.member_id))];
+
+    const title = "活動取消通知";
+    const content = `您報名的活動（ID: ${alId}）已被取消，原因如下：\n${cancel_reason}`;
+
+    for (const memberId of uniqueMemberIds) {
       await db.query(
         `INSERT INTO messages (member_id, title, content) VALUES (?, ?, ?)`,
-        [
-          member.member_id,
-          "活動取消通知",
-          `您報名的活動（ID: ${alId}）已被取消，原因如下：\n${cancel_reason}`,
-        ]
+        [memberId, title, content]
       );
+      notifyUser(memberId, { title, content });
     }
 
-    // 4. 最後刪除活動（或保留資料，看你需求）
     const [result] = await db.query("DELETE FROM activity_list WHERE al_id = ?", [alId]);
     output.success = result.affectedRows > 0;
   } catch (err) {
@@ -359,6 +359,7 @@ router.delete("/:alId", async (req, res) => {
 
   res.json(output);
 });
+
 
 
 
