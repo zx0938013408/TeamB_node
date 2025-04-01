@@ -34,7 +34,7 @@ const getItemById = async (id) => {
     return output;
   }
   const r_sql = `
-    SELECT pd.*, c.categories_name, GROUP_CONCAT(v.size) AS sizes, GROUP_CONCAT(v.stock) AS stocks
+    SELECT pd.*, c.categories_name, GROUP_CONCAT(v.size) AS sizes, GROUP_CONCAT(v.stock) AS stocks, GROUP_CONCAT(v.id ORDER BY v.id) AS variant_ids
     FROM products AS pd 
     LEFT JOIN categories AS c on pd.category_id = c.id
     LEFT JOIN pd_variants v ON pd.id = v.product_id
