@@ -206,6 +206,8 @@ import fetch from 'node-fetch'; // npm i node-fetch
 // import { app } from './app.js'; // 如果有 Express app
 import OpenAI from "openai";
 import dotenv from "dotenv";
+import { joinRoom } from './utils/ws-push.js';
+
 dotenv.config();
 
 // AI 初始化
@@ -233,6 +235,9 @@ wss.on("connection", (ws) => {
         wsClients.set(data.memberId, ws);
         console.log(`🔵 綁定用戶 ${data.memberId} WebSocket`);
         console.log("📦 目前連線會員清單：", [...wsClients.keys()]);
+      }
+      if (data.type === "join-room") {
+        joinRoom(ws, data.room);
       }
 
       // 🤖 AI 客服回覆
