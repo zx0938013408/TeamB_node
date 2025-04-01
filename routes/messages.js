@@ -53,7 +53,7 @@ router.post("/activity-board", async (req, res) => {
           [founder_id, title, content]
         );
         notifyUser(founder_id, { title, content });
-        console.log(`✅ 已通知 member_id = ${u.member_id}`);
+        console.log(`✅ 已通知 member_id = ${member_id}`);
       }
     }
 
