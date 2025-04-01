@@ -21,6 +21,7 @@ import messageRouter from "./routes/messages.js";
 import cron from "node-cron";
 import sendReminderMessages from "./cron/activity-reminder.js";
 
+
 // cron 定時任務排程
 // 每天凌晨 1 點執行一次
 cron.schedule("0 1 * * *", () => {
@@ -203,31 +204,70 @@ import { createServer } from 'http';
 import { WebSocketServer } from 'ws';
 import fetch from 'node-fetch'; // npm i node-fetch
 // import { app } from './app.js'; // 如果有 Express app
+import OpenAI from "openai";
+import dotenv from "dotenv";
+dotenv.config();
+
+// AI 初始化
+const openai = new OpenAI({
+  apiKey: process.env.OPENROUTER_API_KEY,
+  baseURL: "https://openrouter.ai/api/v1",
+});
+
 
 // 🔔 儲存 WebSocket 用戶連線 (memberId -> WebSocket)
 export const wsClients = new Map();
 const server = createServer(app);
 const wss = new WebSocketServer({ server });
 
-wss.on('connection', (ws) => {
-  console.log('✅ WebSocket 已連接');
+wss.on("connection", (ws) => {
+  console.log("✅ WebSocket 已連接");
 
-  // 🔐 前端會傳送 { type: 'auth', memberId }
-  ws.on('message', (msg) => {
+  ws.on("message", async (msg) => {
     try {
       const data = JSON.parse(msg.toString());
-      if (data.type === 'auth' && data.memberId) {
+
+      // 🔐 綁定使用者身份
+      if (data.type === "auth" && data.memberId) {
         ws.memberId = data.memberId;
         wsClients.set(data.memberId, ws);
         console.log(`🔵 綁定用戶 ${data.memberId} WebSocket`);
-        console.log("📦 目前連線的會員清單：", [...wsClients.keys()]);
+        console.log("📦 目前連線會員清單：", [...wsClients.keys()]);
+      }
+
+      // 🤖 AI 客服回覆
+      if (data.type === "chat" && data.sender === "user") {
+        const userInput = data.message;
+
+        const completion = await openai.chat.completions.create({
+          model: "gpt-3.5-turbo",
+          messages: [
+            {
+              role: "system",
+              content: "你是一個友善的 AI 客服，請以繁體中文回答並簡潔扼要。",
+            },
+            { role: "user", content: userInput },
+          ],
+        });
+        
+        const aiReply = completion.choices[0].message.content;
+        console.log("💬 收到用戶問題：", userInput);
+        
+
+        ws.send(
+          JSON.stringify({
+            type: "chat",
+            sender: "ai",
+            message: aiReply,
+          })
+        );
       }
     } catch (err) {
-      console.log('❌ 無法解析 WebSocket 訊息', err);
+      console.error("❌ WebSocket 錯誤", err);
     }
   });
 
-  ws.on('close', () => {
+  ws.on("close", () => {
     if (ws.memberId) {
       wsClients.delete(ws.memberId);
       console.log(`🔴 用戶 ${ws.memberId} 離線，移除 WebSocket`);
