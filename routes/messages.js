@@ -1,6 +1,6 @@
 import express from "express";
 import db from "../utils/connect-mysql.js";
-import { notifyUser } from "../utils/ws-push.js";
+import { notifyUser, broadcastToActivity } from "../utils/ws-push.js";
 
 const router = express.Router();
 // 新增留言
@@ -24,7 +24,20 @@ router.post("/activity-board", async (req, res) => {
       `SELECT founder_id FROM activity_list WHERE al_id = ?`,
       [activity_id]
     );
+    // 查留言者名稱與頭像
+const [[memberInfo]] = await db.query(
+  `SELECT name AS member_name, avatar AS member_avatar FROM members WHERE id = ?`,
+  [member_id]
+);
 
+broadcastToActivity(activity_id, {
+  id: result.insertId,
+  message,
+  created_at: new Date(),
+  is_owner,
+  member_name: memberInfo.member_name,
+  member_avatar: memberInfo.member_avatar,
+});
     const title = is_owner ? "主辦人回覆留言" : "有人留言給你的活動";
     const content = is_owner
       ? `主辦人剛剛回覆了活動留言：「${message.slice(0, 20)}...」`
