@@ -517,7 +517,7 @@ pdRouter.put("/api/:id", upload.single("image"), async (req, res) => {
   res.json(output);
 });
 
-// 重刷頁面確認是否已收藏-方法
+// 通用工具函式：重刷頁面檢查該用戶是否已收藏
 async function CheckIfLiked(memberId, productId) {
   const sql = "SELECT * FROM pd_likes WHERE member_id = ? AND pd_id = ?";
   const [rows] = await db.query(sql, [memberId, productId]);
@@ -535,61 +535,33 @@ pdRouter.post("/api/pd_likes", async (req, res) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_KEY); // 驗證 token
     const memberId = decoded.id; // 使用解碼後的 `id` 作為 memberId
-    const { productId } = req.body;
+    const { productId, toggle = true } = req.body;
     console.log(req.body);
     if (!productId) {
       return res.status(400).json({ success: false, error: "缺少參數" });
     }
-    // 從資料庫中檢查該用戶是否已經喜歡該活動
-    // const checkSql = "SELECT * FROM pd_likes WHERE member_id = ? AND pd_id = ?";
-    // const [rows] = await db.query(checkSql, [memberId, productId]);
 
     const isLiked = await CheckIfLiked(memberId, productId);
 
-    if (isLiked) {
-      // 如果已經喜歡，則取消喜歡
-      await db.query("DELETE FROM pd_likes WHERE member_id = ? AND pd_id = ?", [
-        memberId,
-        productId,
-      ]);
-      return res.json({ success: true, liked: false });
+    if (toggle) {
+      // ✅ 切換收藏狀態
+      if (isLiked) {
+        await db.query(
+          "DELETE FROM pd_likes WHERE member_id = ? AND pd_id = ?",
+          [memberId, productId]
+        );
+        return res.json({ success: true, liked: false });
+      } else {
+        await db.query(
+          "INSERT INTO pd_likes (member_id, pd_id) VALUES (?, ?)",
+          [memberId, productId]
+        );
+        return res.json({ success: true, liked: true });
+      }
     } else {
-      // 如果未喜歡，則新增最愛
-      await db.query("INSERT INTO pd_likes (member_id, pd_id) VALUES (?, ?)", [
-        memberId,
-        productId,
-      ]);
-      return res.json({ success: true, liked: true });
+      // ✅ 查詢是否已收藏（不修改資料庫）
+      return res.json({ success: true, liked: isLiked });
     }
-  } catch (err) {
-    console.log(err);
-    return res.status(401).json({ success: false, error: "Token 驗證失敗" });
-  }
-});
-
-//確認是否已收藏
-pdRouter.get("/api/pd_likes/check/:pdId", async (req, res) => {
-  const token = req.header("Authorization")?.split(" ")[1]; // 從 Authorization 標頭中獲取 token
-
-  if (!token) {
-    return res.status(401).json({ success: false, error: "未提供有效的Token" });
-  }
-
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_KEY); // 驗證 token
-    const memberId = decoded.id; // 使用解碼後的 `id` 作為 memberId
-    const productId = req.params.pdId;
-
-    if (!productId) {
-      return res
-        .status(400)
-        .json({ success: false, error: "缺少 productId 參數" });
-    }
-
-    const isLiked = await CheckIfLiked(memberId, productId);
-
-    console.log(isLiked);
-    return res.json({ success: true, liked: isLiked });
   } catch (err) {
     console.error(err);
     return res.status(401).json({ success: false, error: "Token 驗證失敗" });
@@ -609,38 +581,16 @@ pdRouter.get("/api/member/:memberId", async (req, res) => {
       [memberId]
     );
 
-    res.json({ success: true, rows });
+    // ✅ 每筆商品加上 liked: true（前端才能知道愛心要紅）
+    const result = rows.map((item) => ({
+      ...item,
+      liked: true,
+    }));
+
+    res.json({ success: true, rows: result });
   } catch (error) {
     console.error("取得收藏資料錯誤：", error);
     res.status(500).json({ success: false, message: "資料庫錯誤" });
-  }
-});
-
-// 取消收藏
-pdRouter.delete("/api/pd_likes/:productId", async (req, res) => {
-  const token = req.header("Authorization")?.split(" ")[1]; // 從標頭中獲取 token
-  if (!token) {
-    return res.status(401).json({ success: false, error: "未提供有效的Token" });
-  }
-
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_KEY); // 驗證 token
-    const memberId = decoded.id; // 使用 token 裡的 id 當成會員 ID
-    const productId = req.params.pdId;
-
-    const [result] = await db.query(
-      `DELETE FROM pd_likes WHERE member_id = ? AND pd_id = ?`,
-      [memberId, productId]
-    );
-
-    if (result.affectedRows === 0) {
-      return res.json({ success: false, message: "找不到收藏紀錄" });
-    }
-
-    res.json({ success: true, message: "已移除收藏" });
-  } catch (error) {
-    console.error("JWT 驗證失敗或刪除錯誤：", error);
-    res.status(401).json({ success: false, error: "Token 無效或已過期" });
   }
 });
 
