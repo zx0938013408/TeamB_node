@@ -67,6 +67,100 @@ const checkAuth = (req, res, next) => {
 };
 
 
+router.post('/login-google', async (req, res) => {
+  const { credential } = req.body;
+
+  try {
+    const ticket = await client.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    const email = payload.email;
+
+    // 檢查是否已有帳號
+    const [rows] = await db.query('SELECT * FROM members WHERE email = ?', [email]);
+
+    let user;
+    let isNew = false;
+
+    if (rows.length === 0) {
+      // 🆕 新帳號，自動註冊
+      const name = payload.name || 'Google 使用者';
+      const avatar = payload.picture || 'imgs/cat.jpg';
+      const defaultBirthday = '2000-01-01';
+      const defaultCityId = 1;
+      const defaultAreaId = 1;
+      const defaultAddress = '尚未填寫地址';
+      const defaultPhone = '0900000000';
+
+      const insertSQL = `
+        INSERT INTO members (
+          email, name, avatar, password, password_hashed,
+          birthday_date, city_id, area_id, address, phone
+        )
+        VALUES (?, ?, ?, '', '', ?, ?, ?, ?, ?);
+      `;
+
+      const [result] = await db.query(insertSQL, [
+        email,
+        name,
+        avatar,
+        defaultBirthday,
+        defaultCityId,
+        defaultAreaId,
+        defaultAddress,
+        defaultPhone
+      ]);
+
+      user = {
+        id: result.insertId,
+        email,
+        name,
+        avatar,
+        birthday_date: defaultBirthday,
+        city_id: defaultCityId,
+        area_id: defaultAreaId,
+        address: defaultAddress,
+        phone: defaultPhone,
+      };
+
+      isNew = true; // ✅ 標記為新帳號
+
+    } else {
+      user = rows[0];
+    }
+
+    // 發 JWT
+    const token = jwt.sign(
+      { id: user.id, email: user.email },
+      process.env.JWT_KEY
+    );
+
+    res.json({
+      success: true,
+      data: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        avatar: user.avatar,
+        token,
+        isNew, // ✅ 回傳是否新帳號
+      },
+    });
+
+  } catch (err) {
+    console.error('Google 驗證失敗', err);
+    res.status(401).json({ success: false, message: 'Google 驗證失敗' });
+  }
+});
+
+
+
+
+
+
 //處理照片上傳
 router.post("/avatar/api", upload.single("avatar"), (req, res) => {
   try {
