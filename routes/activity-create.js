@@ -8,18 +8,44 @@ import fs from "node:fs/promises";
 const router = express.Router();
 const dateFormat = "YYYY-MM-DD HH:mm:ss";
 
+// 含髒話會被禁止
+const bannedWords = ["幹", "靠北", "他媽", "垃圾", "白癡", "fuck", "shit"];
+const allowedPhrases = ["樹幹", "幹嘛", "幹勁", "乾杯", "幹事", "幹線"];
+
+const hasBadWords = (input) => {
+  // 先把所有允許詞彙從輸入文字中移除
+  const cleaned = allowedPhrases.reduce((text, phrase) => {
+    return text.replaceAll(phrase, "");
+  }, input);
+
+  // 檢查移除後的內容是否還包含髒話（即便是連續的）
+  return bannedWords.some(bad => cleaned.includes(bad));
+};
+
 // 驗證表單資料格式
 const abSchema = z.object({
-    activity_name: z.string().min(2, { message: "活動名稱至少2字" }),
+  activity_name: z.string()
+    .min(2, { message: "活動名稱至少2字" })
+    .refine((name) => !hasBadWords(name), {
+      message: "活動名稱含有不當字詞，請修改。",
+    }),
     sport_type_id: z.union([z.string(), z.number().transform(String)]),
     area_id: z.union([z.string(), z.number().transform(String)]),
-    court_id: z.union([z.string(), z.number().transform(String)]),
+    court_id: z.union([z.string(), z.number().transform(String)]).refine((val) => val.trim() !== "", { message: "請選擇場地（不能為空）" }),
     address: z.union([z.string(), z.number().transform(String)]),
-    activity_time: z.string(),
-    deadline: z.string(),
+    activity_time: z.string().refine((val) => val.trim() !== "", { message: "請選擇活動時間（不能為空）" }),
+    deadline: z.string().refine((val) => val.trim() !== "", { message: "請選擇場地（不能為空）" }),
     payment: z.union([z.string(), z.number().transform(String)]),
-    need_num: z.union([z.string(), z.number().transform(String)]),
-    introduction: z.union([z.string(), z.number().transform(String)]),
+    need_num: z.union([z.string(), z.number().transform(String)]).refine((val) => val.trim() !== "", { message: "請選擇需求人數（不能為空）" }),
+    introduction: z.union([z.string(), z.number().transform(String)])
+    .transform(String)
+    .pipe(
+      z.string()
+        .min(5, { message: "介紹至少5字" })
+        .refine((text) => !hasBadWords(text), {
+          message: "介紹含有不當字詞，請修改。",
+        })
+    ),
     founder_id: z.union([z.string(), z.number().transform(String)]),
   });
 
