@@ -22,32 +22,44 @@ const removeUploadedImg = async (file) => {
 };
 
 // 取得單筆商品資訊
-const getItemById = async (id) => {
+const getItemById = async (req, id) => {
+  
   const output = {
     success: false,
     data: null,
     error: "",
   };
+  const member_id = req.user?.id;
   const pd_id = parseInt(id); // 轉換成整數
+
   if (!pd_id || pd_id < 1) {
     output.error = "錯誤的編號";
     return output;
   }
+
   const r_sql = `
-    SELECT pd.*, c.categories_name, GROUP_CONCAT(v.size) AS sizes, GROUP_CONCAT(v.stock) AS stocks, GROUP_CONCAT(v.id ORDER BY v.id) AS variant_ids
+    SELECT pd.*,
+    c.categories_name,
+    GROUP_CONCAT(v.size) AS sizes,
+    GROUP_CONCAT(v.stock) AS stocks,
+    GROUP_CONCAT(v.id ORDER BY v.id) AS variant_ids, 
+    l.created_at AS liked_at
     FROM products AS pd 
     LEFT JOIN categories AS c on pd.category_id = c.id
     LEFT JOIN pd_variants v ON pd.id = v.product_id
-    WHERE pd.id = ?
+    LEFT JOIN pd_likes l ON l.pd_id = pd.id 
+    WHERE pd.id = ? AND l.member_id = ?
     GROUP BY pd.id`;
 
-  const [rows] = await db.query(r_sql, [pd_id]);
+  const [rows] = await db.query(r_sql, [ pd_id, member_id]);
+
   if (!rows.length) {
     output.error = "沒有該筆資料";
     return output;
   }
 
   const item = rows[0];
+
   //處理照片路徑
   if (item.image) {
     item.image = `${item.image}`;
@@ -574,7 +586,7 @@ pdRouter.get("/api/member/:memberId", async (req, res) => {
 
   try {
     const [rows] = await db.query(
-      `SELECT pd.*, l.member_id
+      `SELECT pd.*, l.member_id, l.created_at AS liked_at
        FROM pd_likes l
        JOIN products pd ON l.pd_id = pd.id
        WHERE l.member_id = ?`,
