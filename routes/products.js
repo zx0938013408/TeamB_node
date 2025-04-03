@@ -23,13 +23,12 @@ const removeUploadedImg = async (file) => {
 
 // 取得單筆商品資訊
 const getItemById = async (req, id) => {
-  
   const output = {
     success: false,
     data: null,
     error: "",
   };
-  const member_id = req.user?.id;
+  const member_id = req.user?.id ?? null;
   const pd_id = parseInt(id); // 轉換成整數
 
   if (!pd_id || pd_id < 1) {
@@ -38,20 +37,34 @@ const getItemById = async (req, id) => {
   }
 
   const r_sql = `
-    SELECT pd.*,
-    c.categories_name,
-    GROUP_CONCAT(v.size) AS sizes,
-    GROUP_CONCAT(v.stock) AS stocks,
-    GROUP_CONCAT(v.id ORDER BY v.id) AS variant_ids, 
-    l.created_at AS liked_at
-    FROM products AS pd 
-    LEFT JOIN categories AS c on pd.category_id = c.id
-    LEFT JOIN pd_variants v ON pd.id = v.product_id
-    LEFT JOIN pd_likes l ON l.pd_id = pd.id 
-    WHERE pd.id = ? AND l.member_id = ?
-    GROUP BY pd.id`;
+    SELECT 
+      pd.*,
+      sub_c.categories_name AS sub_category_name,
+      parent_c.id AS parent_category_id,
+      parent_c.categories_name AS parent_category_name,
+      (
+        SELECT GROUP_CONCAT(v.size)
+        FROM pd_variants v
+        WHERE v.product_id = pd.id
+      ) AS sizes,
+      (
+        SELECT GROUP_CONCAT(v.stock)
+        FROM pd_variants v
+        WHERE v.product_id = pd.id
+      ) AS stocks,
+      (
+        SELECT GROUP_CONCAT(v.id ORDER BY v.id)
+        FROM pd_variants v
+        WHERE v.product_id = pd.id
+      ) AS variant_ids,
+      l.created_at AS liked_at
+    FROM products pd
+    LEFT JOIN categories sub_c ON pd.category_id = sub_c.id
+    LEFT JOIN categories parent_c ON sub_c.parent_id = parent_c.id
+    LEFT JOIN pd_likes l ON l.pd_id = pd.id AND (l.member_id = ? OR ? IS NULL)
+    WHERE pd.id = ?`;
 
-  const [rows] = await db.query(r_sql, [ pd_id, member_id]);
+  const [rows] = await db.query(r_sql, [member_id, member_id, pd_id]);
 
   if (!rows.length) {
     output.error = "沒有該筆資料";
@@ -59,6 +72,17 @@ const getItemById = async (req, id) => {
   }
 
   const item = rows[0];
+
+  // 主分類名稱 category_key 對應表
+  const categoryNameToKey = {
+    上衣: "top",
+    褲類: "bottom",
+    鞋類: "shoes",
+    運動裝備: "accessories",
+  };
+
+  // 主分類 key
+  item.category_key = categoryNameToKey[item.parent_category_name] || "others";
 
   //處理照片路徑
   if (item.image) {
@@ -263,8 +287,6 @@ GROUP BY pd.id
 ${orderBy}
 LIMIT ?, ?`;
 
-  // [rows] = await db.query(sql, [req.my_jwt?.id || req.session.admin?.member_id || 0, (page - 1) * perPage, perPage]);
-
   params.push((page - 1) * perPage, perPage);
   const [rowsResult] = await db.query(sql, params);
 
@@ -352,7 +374,7 @@ pdRouter.get("/api", async (req, res) => {
 // 取得單筆資料
 pdRouter.get("/api/:pd_id", async (req, res) => {
   console.log("API 被呼叫了，id:", req.params.pd_id);
-  const output = await getItemById(req.params.pd_id);
+  const output = await getItemById(req, req.params.pd_id);
   console.log("API 回傳資料:", output);
   return res.json(output);
 });
@@ -586,17 +608,34 @@ pdRouter.get("/api/member/:memberId", async (req, res) => {
 
   try {
     const [rows] = await db.query(
-      `SELECT pd.*, l.member_id, l.created_at AS liked_at
+      `SELECT 
+         pd.*, 
+         l.member_id, 
+         l.created_at AS liked_at,
+         sub_c.categories_name AS sub_category_name,
+         parent_c.id AS parent_category_id,
+         parent_c.categories_name AS parent_category_name
        FROM pd_likes l
        JOIN products pd ON l.pd_id = pd.id
+       LEFT JOIN categories sub_c ON pd.category_id = sub_c.id
+       LEFT JOIN categories parent_c ON sub_c.parent_id = parent_c.id
        WHERE l.member_id = ?`,
       [memberId]
     );
+
+    // 主分類 category_key對照
+    const categoryNameToKey = {
+      上衣: "top",
+      褲類: "bottom",
+      鞋類: "shoes",
+      運動裝備: "accessories",
+    };
 
     // ✅ 每筆商品加上 liked: true（前端才能知道愛心要紅）
     const result = rows.map((item) => ({
       ...item,
       liked: true,
+      category_key: categoryNameToKey[item.parent_category_name] || "others",
     }));
 
     res.json({ success: true, rows: result });
