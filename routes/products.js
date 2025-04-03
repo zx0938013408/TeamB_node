@@ -630,7 +630,7 @@ pdRouter.get("/api/member/:memberId", async (req, res) => {
       鞋類: "shoes",
       運動裝備: "accessories",
     };
-
+    
     // ✅ 每筆商品加上 liked: true（前端才能知道愛心要紅）
     const result = rows.map((item) => ({
       ...item,
