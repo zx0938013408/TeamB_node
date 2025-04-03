@@ -150,6 +150,23 @@ const getListData = async (req) => {
     ? [req.query.themes]
     : [];
   let categoryId = req.query.categoryId ? parseInt(req.query.categoryId) : null;
+  let parentCategoryIds = Array.isArray(req.query.parentCategories)
+    ? req.query.parentCategories
+    : req.query.parentCategories
+    ? [req.query.parentCategories]
+    : [];
+
+  let subCategoryIds = Array.isArray(req.query.subCategories)
+    ? req.query.subCategories
+    : req.query.subCategories
+    ? [req.query.subCategories]
+    : [];
+  // 尺寸篩選
+  let sizes = Array.isArray(req.query.sizes)
+    ? req.query.sizes
+    : req.query.sizes
+    ? [req.query.sizes]
+    : [];
   let minPrice = req.query.minPrice ? parseFloat(req.query.minPrice) : null;
   let maxPrice = req.query.maxPrice ? parseFloat(req.query.maxPrice) : null;
   let sortField = req.query.sortField || "id";
@@ -189,34 +206,50 @@ const getListData = async (req) => {
   // 🔍 分類（分類名稱）
   if (category) {
     output.category = category;
-    where += ` AND c.categories_name = ? `;
+    where += ` AND parent_c.categories_name = ? `;
     params.push(category);
     paramsForTotal.push(category);
   }
 
-  // 🔍 運動類別
+  // 主分類
+  if (parentCategoryIds.length > 0) {
+    where += ` AND parent_c.id IN (${parentCategoryIds
+      .map(() => "?")
+      .join(",")}) `;
+    params.push(...parentCategoryIds);
+    paramsForTotal.push(...parentCategoryIds);
+  }
+
+  // 次分類
+  if (subCategoryIds.length > 0) {
+    where += ` AND sub_c.id IN (${subCategoryIds.map(() => "?").join(",")}) `;
+    params.push(...subCategoryIds);
+    paramsForTotal.push(...subCategoryIds);
+  }
+
+    // 主分類下所有子分類
+    if (apparel.length > 0) {
+      output.apparel = apparel;
+      where += ` AND sub_c.parent_id IN (${apparel.map(() => "?").join(",")}) `;
+      params.push(...apparel);
+      paramsForTotal.push(...apparel);
+    }
+
+  // 運動類別
   if (sports.length > 0) {
     where += ` AND s.sport_name IN (${sports.map(() => "?").join(",")}) `;
     params.push(...sports);
     paramsForTotal.push(...sports);
   }
 
-  // 🔍 服飾子分類（如 pd_type）
-  if (apparel.length > 0) {
-    output.apparel = apparel;
-    where += ` AND c.parent_id IN (${apparel.map(() => "?").join(",")}) `;
-    params.push(...apparel);
-    paramsForTotal.push(...apparel);
-  }
-
-  // 🔍 主題名稱（多選）
+  // 主題名稱（多選）
   if (themes.length > 0) {
     where += ` AND t.name IN (${themes.map(() => "?").join(",")}) `;
     params.push(...themes);
     paramsForTotal.push(...themes);
   }
 
-  // 🔍 指定 categoryId（數字 id）
+  // 指定 categoryId（數字 id）
   if (categoryId) {
     where += ` AND pd.category_id = ? `;
     params.push(categoryId);
@@ -228,6 +261,12 @@ const getListData = async (req) => {
     where += " AND pd.price >= ? ";
     params.push(minPrice);
     paramsForTotal.push(minPrice);
+  }
+
+  // 尺寸
+  if (sizes.length > 0) {
+    where += ` AND v.size IN (${sizes.map(() => "?").join(",")}) `;
+    params.push(...sizes);
   }
 
   if (maxPrice !== null) {
@@ -243,13 +282,15 @@ const getListData = async (req) => {
   }
 
   // 查詢總筆數
-  const t_sql = `SELECT COUNT(DISTINCT pd.id) AS totalRows 
-   FROM products pd
-   LEFT JOIN categories c ON pd.category_id = c.id
-   LEFT JOIN product_sports ps ON pd.id = ps.product_id
-   LEFT JOIN sport_type s ON pd.sport_type_id = s.id
-   LEFT JOIN product_themes pt ON pd.id = pt.product_id
-  LEFT JOIN pd_themes t ON pt.theme_id = t.id
+  const t_sql = `
+    SELECT COUNT(DISTINCT pd.id) AS totalRows,
+      FROM products pd
+      LEFT JOIN categories sub_c ON pd.category_id = sub_c.id
+      LEFT JOIN categories parent_c ON sub_c.parent_id = parent_c.id
+      LEFT JOIN product_sports ps ON pd.id = ps.product_id
+      LEFT JOIN sport_type s ON ps.sport_type_id = s.id
+      LEFT JOIN product_themes pt ON pd.id = pt.product_id
+      LEFT JOIN pd_themes t ON pt.theme_id = t.id
 
    ${where} `;
   const [[{ totalRows }]] = await db.query(t_sql, params); // 取得總筆數
@@ -268,14 +309,17 @@ const getListData = async (req) => {
   const sql = `
   SELECT 
   pd.*, 
-  c.categories_name, 
+  sub_c.categories_name AS sub_category_name,
+  parent_c.id AS parent_category_id,
+  parent_c.categories_name AS parent_category_name,
   MAX(l.like_id) AS like_id, 
   GROUP_CONCAT(v.size) AS sizes,
   GROUP_CONCAT(v.stock) AS stocks
 FROM products pd 
-LEFT JOIN categories c ON pd.category_id = c.id
+LEFT JOIN categories sub_c ON pd.category_id = sub_c.id
+LEFT JOIN categories parent_c ON sub_c.parent_id = parent_c.id
 LEFT JOIN product_sports ps ON pd.id = ps.product_id
-LEFT JOIN sport_type s ON pd.sport_type_id = s.id
+LEFT JOIN sport_type s ON ps.sport_type_id = s.id
 LEFT JOIN product_themes pt ON pd.id = pt.product_id
 LEFT JOIN pd_themes t ON pt.theme_id = t.id
 LEFT JOIN (
@@ -443,7 +487,7 @@ pdRouter.post("/api/edit/:id", async (req, res) => {
       size,
       color,
       inventory,
-      req.pd_id,
+      req.params.id,
     ]);
 
     output.success = !!result.affectedRows;
