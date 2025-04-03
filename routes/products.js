@@ -623,7 +623,6 @@ pdRouter.get("/api/member/:memberId", async (req, res) => {
       [memberId]
     );
 
-<<<<<<< HEAD
     // 主分類 category_key對照
     const categoryNameToKey = {
       上衣: "top",
@@ -631,9 +630,7 @@ pdRouter.get("/api/member/:memberId", async (req, res) => {
       鞋類: "shoes",
       運動裝備: "accessories",
     };
-=======
->>>>>>> a30f5b5f6ecace6e69e684637ff27d8960f89cad
-    
+
     // ✅ 每筆商品加上 liked: true（前端才能知道愛心要紅）
     const result = rows.map((item) => ({
       ...item,
