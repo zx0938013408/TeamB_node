@@ -169,11 +169,20 @@ const getListData = async (req) => {
     : [];
   let minPrice = req.query.minPrice ? parseFloat(req.query.minPrice) : null;
   let maxPrice = req.query.maxPrice ? parseFloat(req.query.maxPrice) : null;
-  let sortField = req.query.sortField || "id";
-  let sortRule = req.query.sortRule || "asc"; // asc, desc
-
+  let sortField = "id";
+  let sortRule = "desc"; // asc, desc
   let params = [member_id]; // 初始參數給 like 的子查詢
   let paramsForTotal = []; // 查總筆數用（沒有用到 member_id）
+
+    // 拆分排序參數
+  // ✅ 優先處理 sort（例如：sort=price_desc）
+if (req.query.sort) {
+  [sortField, sortRule] = req.query.sort.split("-");
+} else {
+  // ✅ 若無 sort，才使用 sortField/sortRule 個別參數
+  sortField = req.query.sortField || "id";
+  sortRule = req.query.sortRule || "desc";
+}
 
   // 設定排序條件
   let orderBy = "";
@@ -192,6 +201,7 @@ const getListData = async (req) => {
       orderBy = ` ORDER BY pd.price ASC `;
       break;
   }
+
 
   // 組合 Where 條件
   let where = ` WHERE 1 `;
@@ -283,7 +293,7 @@ const getListData = async (req) => {
 
   // 查詢總筆數
   const t_sql = `
-    SELECT COUNT(DISTINCT pd.id) AS totalRows,
+    SELECT COUNT(DISTINCT pd.id) AS totalRows
       FROM products pd
       LEFT JOIN categories sub_c ON pd.category_id = sub_c.id
       LEFT JOIN categories parent_c ON sub_c.parent_id = parent_c.id
@@ -333,6 +343,10 @@ LIMIT ?, ?`;
 
   params.push((page - 1) * perPage, perPage);
   const [rowsResult] = await db.query(sql, params);
+
+  rowsResult.forEach((item) => {
+    item.product_name = item.product_name || "未命名商品";
+  });
 
   // 回傳結果
   return {
