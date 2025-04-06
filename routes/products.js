@@ -254,7 +254,7 @@ if (req.query.sort) {
 
   // 主題名稱（多選）
   if (themes.length > 0) {
-    where += ` AND t.name IN (${themes.map(() => "?").join(",")}) `;
+    where += ` AND t.id IN (${themes.map(() => "?").join(",")}) `;
     params.push(...themes);
     paramsForTotal.push(...themes);
   }
