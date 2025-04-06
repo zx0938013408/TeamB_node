@@ -22,32 +22,68 @@ const removeUploadedImg = async (file) => {
 };
 
 // 取得單筆商品資訊
-const getItemById = async (id) => {
+const getItemById = async (req, id) => {
   const output = {
     success: false,
     data: null,
     error: "",
   };
+  const member_id = req.user?.id ?? null;
   const pd_id = parseInt(id); // 轉換成整數
+
   if (!pd_id || pd_id < 1) {
     output.error = "錯誤的編號";
     return output;
   }
-  const r_sql = `
-    SELECT pd.*, c.categories_name, GROUP_CONCAT(v.size) AS sizes, GROUP_CONCAT(v.stock) AS stocks, GROUP_CONCAT(v.id ORDER BY v.id) AS variant_ids
-    FROM products AS pd 
-    LEFT JOIN categories AS c on pd.category_id = c.id
-    LEFT JOIN pd_variants v ON pd.id = v.product_id
-    WHERE pd.id = ?
-    GROUP BY pd.id`;
 
-  const [rows] = await db.query(r_sql, [pd_id]);
+  const r_sql = `
+    SELECT 
+      pd.*,
+      sub_c.categories_name AS sub_category_name,
+      parent_c.id AS parent_category_id,
+      parent_c.categories_name AS parent_category_name,
+      (
+        SELECT GROUP_CONCAT(v.size)
+        FROM pd_variants v
+        WHERE v.product_id = pd.id
+      ) AS sizes,
+      (
+        SELECT GROUP_CONCAT(v.stock)
+        FROM pd_variants v
+        WHERE v.product_id = pd.id
+      ) AS stocks,
+      (
+        SELECT GROUP_CONCAT(v.id ORDER BY v.id)
+        FROM pd_variants v
+        WHERE v.product_id = pd.id
+      ) AS variant_ids,
+      l.created_at AS liked_at
+    FROM products pd
+    LEFT JOIN categories sub_c ON pd.category_id = sub_c.id
+    LEFT JOIN categories parent_c ON sub_c.parent_id = parent_c.id
+    LEFT JOIN pd_likes l ON l.pd_id = pd.id AND (l.member_id = ? OR ? IS NULL)
+    WHERE pd.id = ?`;
+
+  const [rows] = await db.query(r_sql, [member_id, member_id, pd_id]);
+
   if (!rows.length) {
     output.error = "沒有該筆資料";
     return output;
   }
 
   const item = rows[0];
+
+  // 主分類名稱 category_key 對應表
+  const categoryNameToKey = {
+    上衣: "top",
+    褲類: "bottom",
+    鞋類: "shoes",
+    運動裝備: "accessories",
+  };
+
+  // 主分類 key
+  item.category_key = categoryNameToKey[item.parent_category_name] || "others";
+
   //處理照片路徑
   if (item.image) {
     item.image = `${item.image}`;
@@ -114,13 +150,39 @@ const getListData = async (req) => {
     ? [req.query.themes]
     : [];
   let categoryId = req.query.categoryId ? parseInt(req.query.categoryId) : null;
+  let parentCategoryIds = Array.isArray(req.query.parentCategories)
+    ? req.query.parentCategories
+    : req.query.parentCategories
+    ? [req.query.parentCategories]
+    : [];
+
+  let subCategoryIds = Array.isArray(req.query.subCategories)
+    ? req.query.subCategories
+    : req.query.subCategories
+    ? [req.query.subCategories]
+    : [];
+  // 尺寸篩選
+  let sizes = Array.isArray(req.query.sizes)
+    ? req.query.sizes
+    : req.query.sizes
+    ? [req.query.sizes]
+    : [];
   let minPrice = req.query.minPrice ? parseFloat(req.query.minPrice) : null;
   let maxPrice = req.query.maxPrice ? parseFloat(req.query.maxPrice) : null;
-  let sortField = req.query.sortField || "id";
-  let sortRule = req.query.sortRule || "asc"; // asc, desc
-
+  let sortField = "id";
+  let sortRule = "desc"; // asc, desc
   let params = [member_id]; // 初始參數給 like 的子查詢
   let paramsForTotal = []; // 查總筆數用（沒有用到 member_id）
+
+    // 拆分排序參數
+  // ✅ 優先處理 sort（例如：sort=price_desc）
+if (req.query.sort) {
+  [sortField, sortRule] = req.query.sort.split("-");
+} else {
+  // ✅ 若無 sort，才使用 sortField/sortRule 個別參數
+  sortField = req.query.sortField || "id";
+  sortRule = req.query.sortRule || "desc";
+}
 
   // 設定排序條件
   let orderBy = "";
@@ -140,6 +202,7 @@ const getListData = async (req) => {
       break;
   }
 
+
   // 組合 Where 條件
   let where = ` WHERE 1 `;
 
@@ -153,34 +216,50 @@ const getListData = async (req) => {
   // 🔍 分類（分類名稱）
   if (category) {
     output.category = category;
-    where += ` AND c.categories_name = ? `;
+    where += ` AND parent_c.categories_name = ? `;
     params.push(category);
     paramsForTotal.push(category);
   }
 
-  // 🔍 運動類別
+  // 主分類
+  if (parentCategoryIds.length > 0) {
+    where += ` AND parent_c.id IN (${parentCategoryIds
+      .map(() => "?")
+      .join(",")}) `;
+    params.push(...parentCategoryIds);
+    paramsForTotal.push(...parentCategoryIds);
+  }
+
+  // 次分類
+  if (subCategoryIds.length > 0) {
+    where += ` AND sub_c.id IN (${subCategoryIds.map(() => "?").join(",")}) `;
+    params.push(...subCategoryIds);
+    paramsForTotal.push(...subCategoryIds);
+  }
+
+    // 主分類下所有子分類
+    if (apparel.length > 0) {
+      output.apparel = apparel;
+      where += ` AND sub_c.parent_id IN (${apparel.map(() => "?").join(",")}) `;
+      params.push(...apparel);
+      paramsForTotal.push(...apparel);
+    }
+
+  // 運動類別
   if (sports.length > 0) {
     where += ` AND s.sport_name IN (${sports.map(() => "?").join(",")}) `;
     params.push(...sports);
     paramsForTotal.push(...sports);
   }
 
-  // 🔍 服飾子分類（如 pd_type）
-  if (apparel.length > 0) {
-    output.apparel = apparel;
-    where += ` AND c.parent_id IN (${apparel.map(() => "?").join(",")}) `;
-    params.push(...apparel);
-    paramsForTotal.push(...apparel);
-  }
-
-  // 🔍 主題名稱（多選）
+  // 主題名稱（多選）
   if (themes.length > 0) {
-    where += ` AND t.name IN (${themes.map(() => "?").join(",")}) `;
+    where += ` AND t.id IN (${themes.map(() => "?").join(",")}) `;
     params.push(...themes);
     paramsForTotal.push(...themes);
   }
 
-  // 🔍 指定 categoryId（數字 id）
+  // 指定 categoryId（數字 id）
   if (categoryId) {
     where += ` AND pd.category_id = ? `;
     params.push(categoryId);
@@ -192,6 +271,12 @@ const getListData = async (req) => {
     where += " AND pd.price >= ? ";
     params.push(minPrice);
     paramsForTotal.push(minPrice);
+  }
+
+  // 尺寸
+  if (sizes.length > 0) {
+    where += ` AND v.size IN (${sizes.map(() => "?").join(",")}) `;
+    params.push(...sizes);
   }
 
   if (maxPrice !== null) {
@@ -207,13 +292,15 @@ const getListData = async (req) => {
   }
 
   // 查詢總筆數
-  const t_sql = `SELECT COUNT(DISTINCT pd.id) AS totalRows 
-   FROM products pd
-   LEFT JOIN categories c ON pd.category_id = c.id
-   LEFT JOIN product_sports ps ON pd.id = ps.product_id
-   LEFT JOIN sport_type s ON pd.sport_type_id = s.id
-   LEFT JOIN product_themes pt ON pd.id = pt.product_id
-  LEFT JOIN pd_themes t ON pt.theme_id = t.id
+  const t_sql = `
+    SELECT COUNT(DISTINCT pd.id) AS totalRows
+      FROM products pd
+      LEFT JOIN categories sub_c ON pd.category_id = sub_c.id
+      LEFT JOIN categories parent_c ON sub_c.parent_id = parent_c.id
+      LEFT JOIN product_sports ps ON pd.id = ps.product_id
+      LEFT JOIN sport_type s ON ps.sport_type_id = s.id
+      LEFT JOIN product_themes pt ON pd.id = pt.product_id
+      LEFT JOIN pd_themes t ON pt.theme_id = t.id
 
    ${where} `;
   const [[{ totalRows }]] = await db.query(t_sql, params); // 取得總筆數
@@ -232,14 +319,17 @@ const getListData = async (req) => {
   const sql = `
   SELECT 
   pd.*, 
-  c.categories_name, 
+  sub_c.categories_name AS sub_category_name,
+  parent_c.id AS parent_category_id,
+  parent_c.categories_name AS parent_category_name,
   MAX(l.like_id) AS like_id, 
   GROUP_CONCAT(v.size) AS sizes,
   GROUP_CONCAT(v.stock) AS stocks
 FROM products pd 
-LEFT JOIN categories c ON pd.category_id = c.id
+LEFT JOIN categories sub_c ON pd.category_id = sub_c.id
+LEFT JOIN categories parent_c ON sub_c.parent_id = parent_c.id
 LEFT JOIN product_sports ps ON pd.id = ps.product_id
-LEFT JOIN sport_type s ON pd.sport_type_id = s.id
+LEFT JOIN sport_type s ON ps.sport_type_id = s.id
 LEFT JOIN product_themes pt ON pd.id = pt.product_id
 LEFT JOIN pd_themes t ON pt.theme_id = t.id
 LEFT JOIN (
@@ -251,10 +341,12 @@ GROUP BY pd.id
 ${orderBy}
 LIMIT ?, ?`;
 
-  // [rows] = await db.query(sql, [req.my_jwt?.id || req.session.admin?.member_id || 0, (page - 1) * perPage, perPage]);
-
   params.push((page - 1) * perPage, perPage);
   const [rowsResult] = await db.query(sql, params);
+
+  rowsResult.forEach((item) => {
+    item.product_name = item.product_name || "未命名商品";
+  });
 
   // 回傳結果
   return {
@@ -340,7 +432,7 @@ pdRouter.get("/api", async (req, res) => {
 // 取得單筆資料
 pdRouter.get("/api/:pd_id", async (req, res) => {
   console.log("API 被呼叫了，id:", req.params.pd_id);
-  const output = await getItemById(req.params.pd_id);
+  const output = await getItemById(req, req.params.pd_id);
   console.log("API 回傳資料:", output);
   return res.json(output);
 });
@@ -409,7 +501,7 @@ pdRouter.post("/api/edit/:id", async (req, res) => {
       size,
       color,
       inventory,
-      req.pd_id,
+      req.params.id,
     ]);
 
     output.success = !!result.affectedRows;
@@ -574,17 +666,34 @@ pdRouter.get("/api/member/:memberId", async (req, res) => {
 
   try {
     const [rows] = await db.query(
-      `SELECT pd.*, l.member_id
+      `SELECT 
+         pd.*, 
+         l.member_id, 
+         l.created_at AS liked_at,
+         sub_c.categories_name AS sub_category_name,
+         parent_c.id AS parent_category_id,
+         parent_c.categories_name AS parent_category_name
        FROM pd_likes l
        JOIN products pd ON l.pd_id = pd.id
+       LEFT JOIN categories sub_c ON pd.category_id = sub_c.id
+       LEFT JOIN categories parent_c ON sub_c.parent_id = parent_c.id
        WHERE l.member_id = ?`,
       [memberId]
     );
+
+    // 主分類 category_key對照
+    const categoryNameToKey = {
+      上衣: "top",
+      褲類: "bottom",
+      鞋類: "shoes",
+      運動裝備: "accessories",
+    };
 
     // ✅ 每筆商品加上 liked: true（前端才能知道愛心要紅）
     const result = rows.map((item) => ({
       ...item,
       liked: true,
+      category_key: categoryNameToKey[item.parent_category_name] || "others",
     }));
 
     res.json({ success: true, rows: result });
