@@ -5,6 +5,9 @@ import jwt from "jsonwebtoken";
 import upload from "../utils/upload-images.js";
 import multer from "multer";
 // import cron from 'node-cron';
+import { OAuth2Client } from 'google-auth-library';
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
 
 const app = express();
 
@@ -12,42 +15,6 @@ const app = express();
 
 
 const router = express.Router();
-
-// 定時任務，每天執行一次
-// cron.schedule('0 0 * * *', async () => {
-//   try {
-//     // 查找未來 7 天內的所有活動
-//     const sql = `
-//       SELECT al.al_id, al.activity_name, r.member_id
-//       FROM activity_list al
-//       JOIN registered r ON al.al_id = r.activity_id
-//       WHERE al.activity_time BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 7 DAY);
-//     `;
-//     const [activities] = await db.query(sql);
-
-//     // 為每個用戶創建通知
-//     const notifications = activities.map(activity => [
-//       activity.member_id,
-//       activity.al_id,
-//       `您有一個即將舉行的活動: ${activity.activity_name}`,
-//       'unread', // 設為未讀
-//     ]);
-
-//     // 批量插入通知到 `notifications` 表
-//     if (notifications.length > 0) {
-//       const insertSql = `
-//         INSERT INTO notifications (user_id, activity_id, message, status)
-//         VALUES ?;
-//       `;
-//       await db.query(insertSql, [notifications]);
-//       console.log('通知創建成功');
-//     }
-//   } catch (error) {
-//     console.error('定時任務錯誤:', error);
-//   }
-// });
-
-
 
 
 
@@ -126,27 +93,50 @@ router.post('/login-google', async (req, res) => {
         phone: defaultPhone,
       };
 
-      isNew = true; // ✅ 標記為新帳號
-
+      isNew = true;
     } else {
       user = rows[0];
     }
 
+    // 🔄 取得完整會員資料（運動、城市等）
+    const detailSQL = `
+  SELECT 
+    m.*,
+    GROUP_CONCAT(DISTINCT s.id SEPARATOR ',') AS sport,
+    GROUP_CONCAT(DISTINCT s.sport_name SEPARATOR ', ') AS sportText
+  FROM members m
+  LEFT JOIN member_sports ms ON m.id = ms.member_id
+  LEFT JOIN sport_type s ON ms.sport_id = s.id
+  WHERE m.id = ?
+  GROUP BY m.id
+`;
+
+    const [detailRows] = await db.query(detailSQL, [user.id]);
+    const fullUser = detailRows[0];
+
     // 發 JWT
     const token = jwt.sign(
-      { id: user.id, email: user.email },
+      { id: fullUser.id, email: fullUser.email },
       process.env.JWT_KEY
     );
 
     res.json({
       success: true,
       data: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        avatar: user.avatar,
+        id: fullUser.id,
+        email: fullUser.email,
+        name: fullUser.name,
+        avatar: fullUser.avatar,
+        birthday_date: fullUser.birthday_date,
+        gender: fullUser.gender,
+        phone: fullUser.phone,
+        address: fullUser.address,
+        city_id: fullUser.city_id,
+        area_id: fullUser.area_id,
+        sport: fullUser.sport || "",
+        sportText: fullUser.sportText || "",
         token,
-        isNew, // ✅ 回傳是否新帳號
+        isNew,
       },
     });
 
@@ -155,6 +145,7 @@ router.post('/login-google', async (req, res) => {
     res.status(401).json({ success: false, message: 'Google 驗證失敗' });
   }
 });
+
 
 
 
@@ -731,7 +722,7 @@ router.get("/jwt-data", (req, res) => {
       }
   
       // 獲取前端傳來的資料
-      const { name, gender, sport, phone, address, city_id, area_id } = req.body;
+      const { name, gender, sport, phone, address, city_id, area_id, birthday_date } = req.body;
 
       if (!name || !gender || !phone || !address || !city_id || !area_id) {
         return res.status(400).json({ success: false, message: "請填寫完整資料" });
@@ -772,6 +763,10 @@ let sportText = sport_types[0].sport_names;
       }
   
       // 更新 users 表中的資料
+     
+
+      const formattedBirthday = birthday_date.split("T")[0];
+
       const updateMembersSql = `
         UPDATE members
         SET
@@ -781,12 +776,13 @@ let sportText = sport_types[0].sport_names;
           address = ?,
           avatar = ?,
           city_id = ?, 
-          area_id = ?
+          area_id = ?,
+          birthday_date = ?
         WHERE id = ?;
       `;
-
-      const updateMembersValues = [name, gender, phone, address, avatarPath, city_id, area_id, userId ];
-  
+      
+      const updateMembersValues = [name, gender, phone, address, avatarPath, city_id, area_id, formattedBirthday, userId];
+      
         // 執行更新操作
         await db.query(updateMembersSql, updateMembersValues);
 
@@ -830,6 +826,7 @@ let sportText = sport_types[0].sport_names;
           phone,
           address,
           avatar: avatarPath,
+          birthday_date, 
         },
       });
     } catch (err) {
