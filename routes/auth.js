@@ -765,6 +765,8 @@ let sportText = sport_types[0].sport_names;
       // 更新 users 表中的資料
      
 
+      const formattedBirthday = birthday_date.split("T")[0];
+
       const updateMembersSql = `
         UPDATE members
         SET
@@ -779,7 +781,7 @@ let sportText = sport_types[0].sport_names;
         WHERE id = ?;
       `;
       
-      const updateMembersValues = [name, gender, phone, address, avatarPath, city_id, area_id, birthday_date, userId];
+      const updateMembersValues = [name, gender, phone, address, avatarPath, city_id, area_id, formattedBirthday, userId];
       
         // 執行更新操作
         await db.query(updateMembersSql, updateMembersValues);
