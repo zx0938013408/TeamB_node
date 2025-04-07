@@ -9,19 +9,18 @@ import upload from "./utils/upload-images.js";
 import admin2Router from "./routes/admin2.js";
 import abRouter from "./routes/activity-list.js";
 import registeredRouter from "./routes/registered.js";
-import memberActivitiesRouter from './routes/member-activities.js'; // 會員查詢已報名活動
-import cityRouter from "./routes/city.js"
-import pdRouter from "./routes/products.js"
-import authRouter from "./routes/auth.js"
-import activityCreateRouter from "./routes/activity-create.js"
-import ecpayRouter from "./routes/ecpay-test-only.js"
-import ordersRouter from "./routes/orders.js"
-import courtRouter from "./routes/court.js"
+import memberActivitiesRouter from "./routes/member-activities.js"; // 會員查詢已報名活動
+import cityRouter from "./routes/city.js";
+import pdRouter from "./routes/products.js";
+import authRouter from "./routes/auth.js";
+import activityCreateRouter from "./routes/activity-create.js";
+import ecpayRouter from "./routes/ecpay-test-only.js";
+import ordersRouter from "./routes/orders.js";
+import courtRouter from "./routes/court.js";
 import messageRouter from "./routes/messages.js";
 import cron from "node-cron";
 import sendReminderMessages from "./cron/activity-reminder.js";
-import couponRouter from "./routes/coupons.js"
-
+import couponRouter from "./routes/coupons.js";
 
 // cron 定時任務排程
 // 每天凌晨 1 點執行一次
@@ -66,8 +65,6 @@ app.use(
   })
 );
 
-
-
 // **** 自訂的 top-level middlewares ****
 app.use((req, res, next) => {
   res.locals.title = "小新的網站"; // 預設的 "頁面 title"
@@ -82,10 +79,10 @@ app.use((req, res, next) => {
 app.use("/admin2", admin2Router);
 app.use("/activity-list", abRouter);
 app.use("/registered", registeredRouter);
-app.use('/members', memberActivitiesRouter); 
+app.use("/members", memberActivitiesRouter);
 app.use("/city-area", cityRouter);
 app.use("/products", pdRouter);
-app.use('/auth',authRouter);
+app.use("/auth", authRouter);
 app.use("/activity-create", activityCreateRouter);
 app.use("/ecpay-test-only", ecpayRouter);
 app.use("/orders", ordersRouter);
@@ -93,8 +90,6 @@ app.use("/court", courtRouter);
 app.use("/messages", messageRouter);
 app.use("/api/messages", messageRouter);
 app.use("/coupons", couponRouter);
-
-
 
 app.get("/", (req, res) => {
   res.locals.title = "首頁 - " + res.locals.title;
@@ -193,7 +188,6 @@ app.get("/try-db", async (req, res) => {
   res.json({ results, fields });
 });
 
-
 // ************** 404 要在所有的路由之後 ****************
 app.use((req, res) => {
   res.status(404).send(`<h1>您走錯路了</h1>
@@ -202,13 +196,13 @@ app.use((req, res) => {
 });
 
 // *************** 串接 AI 功能 (模型: gemma2-it-tw:2b )***************
-import { createServer } from 'http';
-import { WebSocketServer } from 'ws';
-import fetch from 'node-fetch'; // npm i node-fetch
+import { createServer } from "http";
+import { WebSocketServer } from "ws";
+import fetch from "node-fetch"; // npm i node-fetch
 // import { app } from './app.js'; // 如果有 Express app
 import OpenAI from "openai";
 import dotenv from "dotenv";
-import { joinRoom } from './utils/ws-push.js';
+import { joinRoom } from "./utils/ws-push.js";
 
 dotenv.config();
 
@@ -217,7 +211,6 @@ const openai = new OpenAI({
   apiKey: process.env.OPENROUTER_API_KEY,
   baseURL: "https://openrouter.ai/api/v1",
 });
-
 
 // 🔔 儲存 WebSocket 用戶連線 (memberId -> WebSocket)
 export const wsClients = new Map();
@@ -231,35 +224,86 @@ wss.on("connection", (ws) => {
     try {
       const data = JSON.parse(msg.toString());
 
-      // 🔐 綁定使用者身份
+      // ✅ 綁定會員身份
       if (data.type === "auth" && data.memberId) {
         ws.memberId = data.memberId;
         wsClients.set(data.memberId, ws);
         console.log(`🔵 綁定用戶 ${data.memberId} WebSocket`);
-        console.log("📦 目前連線會員清單：", [...wsClients.keys()]);
+        return;
       }
+
+      // ✅ 加入聊天室功能（如有使用）
       if (data.type === "join-room") {
         joinRoom(ws, data.room);
+        return;
       }
 
-      // 🤖 AI 客服回覆
+      // ✅ 核心邏輯：處理 AI 客服訊息
       if (data.type === "chat" && data.sender === "user") {
         const userInput = data.message;
+        const memberId = ws.memberId || null;
 
+        // ✅ 簡單關鍵字判斷（可改為更進階的自然語言處理）
+        if (userInput.includes("報名") && userInput.includes("活動")) {
+          if (!memberId) {
+            ws.send(
+              JSON.stringify({
+                type: "chat",
+                sender: "ai",
+                message: "請先登入以查詢您的報名活動紀錄喔！",
+              })
+            );
+            return;
+          }
+
+          const [rows] = await db.query(
+            `
+            SELECT 
+            a.activity_name,
+            a.activity_time,
+            r.registered_time
+            FROM registered r
+            JOIN activity_list a ON r.activity_id = a.al_id
+            WHERE r.member_id = ?
+            ORDER BY r.registered_time DESC
+            `,
+            [memberId]
+          );
+
+          const reply = rows.length
+            ? `<p>您報名的活動如下：</p><ul style="padding-left: 1.2rem; line-height: 1.6;">${rows
+                .map(
+                  (r) =>
+                    `<li>${r.activity_name}（活動時間：${new Date(
+                      r.activity_time
+                    ).toLocaleString()}）</li>`
+                )
+                .join("")}</ul>`
+            : "您目前尚未報名任何活動。";
+
+          ws.send(
+            JSON.stringify({
+              type: "chat",
+              sender: "ai",
+              message: reply,
+            })
+          );
+          return;
+        }
+
+        // ✅ 預設用 GPT 回覆
         const completion = await openai.chat.completions.create({
           model: "gpt-3.5-turbo",
           messages: [
             {
               role: "system",
-              content: "你是一個友善的 AI 客服，請以繁體中文回答並簡潔扼要。",
+              content: "你是一個友善的 AI 客服，請用繁體中文回答並簡潔扼要。",
             },
             { role: "user", content: userInput },
           ],
         });
-        
+
         const aiReply = completion.choices[0].message.content;
-        console.log("💬 收到用戶問題：", userInput);
-        
 
         ws.send(
           JSON.stringify({
@@ -281,7 +325,6 @@ wss.on("connection", (ws) => {
     }
   });
 });
-
 
 // ********************************************
 const port = process.env.WEB_PORT || 3002;
