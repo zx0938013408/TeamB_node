@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- 主機： 127.0.0.1
--- 產生時間： 2025-04-02 09:18:25
+-- 產生時間： 2025-04-07 02:07:26
 -- 伺服器版本： 8.0.40
 -- PHP 版本： 8.2.12
 
@@ -124,7 +124,7 @@ CREATE TABLE `activity_message_board` (
   `id` int NOT NULL,
   `activity_id` int NOT NULL,
   `member_id` int NOT NULL,
-  `message` text COLLATE utf8mb4_general_ci NOT NULL,
+  `message` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
   `is_owner` tinyint(1) DEFAULT '0'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -692,6 +692,8 @@ CREATE TABLE `court_info` (
   `name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
   `area_id` int DEFAULT NULL,
   `address` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `lat` float NOT NULL,
+  `lng` float NOT NULL,
   `type_id` int DEFAULT NULL,
   `is_paid` tinyint(1) DEFAULT NULL,
   `is_reserve` tinyint(1) DEFAULT NULL
@@ -701,31 +703,34 @@ CREATE TABLE `court_info` (
 -- 傾印資料表的資料 `court_info`
 --
 
-INSERT INTO `court_info` (`id`, `name`, `area_id`, `address`, `type_id`, `is_paid`, `is_reserve`) VALUES
-(1, '臺南市立籃球場', 218, '大林路', 3, 0, 0),
-(2, '永華國民運動中心', 216, '我要回修改頁面拉', 1, 1, 1),
-(3, '臺南高商體育館', 218, '健康路一段327號', 1, 1, 1),
-(4, '新營體育館', 240, '長榮路二段78號', 1, 1, 1),
-(5, '新化區體育公園', 224, '公園路110號', 2, 0, 0),
-(6, '歸仁區體育公園', 223, '公園路152號', 3, 0, 0),
-(7, '南區全民運動中心', 218, '健康路一段327號', 1, 1, 1),
-(8, '善化區體育公園', 248, '進學路150號', 2, 0, 0),
-(9, '永康區忠孝運動公園', 222, '忠孝路250號', 2, 0, 0),
-(10, '仁德區運動公園', 229, '仁義路130號', 2, 0, 0),
-(11, '六甲沙灘排球場', 244, '和平街479號', 4, 0, 0),
-(12, '東山運動場', 243, '中興南路26號', 2, 0, 0),
-(13, '小窩排球館', 221, '北安路四段555號', 1, 1, 1),
-(14, '歐萊-排球小角落', 252, '海寮5之38號C棟', 1, 1, 1),
-(15, '新市全民運動中心', 251, '中華路49號', 1, 1, 1),
-(16, '臺南市立羽球館', 218, '體育路10號之9', 1, 1, 1),
-(17, '順天羽球館', 219, '北成路271號', 1, 1, 1),
-(18, '博鴻羽球館', 217, '東光路一段100號', 1, 1, 1),
-(19, '佳里羽球館', 234, '安北路196號', 1, 1, 1),
-(20, '金成羽球館', 220, '光州路36號', 1, 1, 1),
-(21, '翔友羽球館', 221, '北安路二段538號', 1, 1, 1),
-(22, '中愛羽球館', 217, '裕豐街214巷', 1, 1, 1),
-(23, '藏龍羽球概念館', 229, '中山路50號', 1, 1, 1),
-(24, '新力羽球南科館', 251, '陽光大道20號', 1, 1, 1);
+INSERT INTO `court_info` (`id`, `name`, `area_id`, `address`, `lat`, `lng`, `type_id`, `is_paid`, `is_reserve`) VALUES
+(1, '臺南市立籃球場', 218, '大林路', 22.976, 120.209, 3, 0, 0),
+(2, '永華國民運動中心', 216, '中華西路二段30號', 22.99, 120.188, 1, 1, 1),
+(3, '臺南高商體育館', 218, '健康路一段327號', 22.9801, 120.202, 1, 1, 1),
+(4, '新營體育館', 240, '長榮路二段78號', 23.3209, 120.312, 1, 1, 1),
+(5, '新化區體育公園', 224, '公園路110號', 23.0301, 120.307, 2, 0, 0),
+(6, '歸仁區體育公園', 223, '公園路152號', 22.9641, 120.297, 3, 0, 0),
+(7, '南區全民運動中心', 218, '健康路一段327號', 22.9802, 120.202, 1, 1, 1),
+(8, '善化區體育公園', 248, '進學路150號', 23.1371, 120.29, 2, 0, 0),
+(9, '永康區忠孝運動公園', 222, '忠孝路250號', 23.0146, 120.242, 2, 0, 0),
+(10, '仁德區運動公園', 229, '仁義路130號', 22.9694, 120.259, 2, 0, 0),
+(11, '六甲沙灘排球場', 244, '和平街479號', 23.2311, 120.344, 4, 0, 0),
+(12, '東山運動場', 243, '中興南路26號', 23.3187, 120.404, 2, 0, 0),
+(13, '小窩排球館', 221, '北安路四段555號', 23.067, 120.214, 1, 1, 1),
+(14, '歐萊-排球小角落', 252, '海寮5之38號C棟', 23.0904, 120.209, 1, 1, 1),
+(15, '新市全民運動中心', 251, '中華路49號', 23.0671, 120.3, 1, 1, 1),
+(16, '臺南市立羽球館', 218, '體育路10號之9', 22.976, 120.209, 1, 1, 1),
+(17, '順天羽球館', 219, '北成路271號', 23.0199, 120.204, 1, 1, 1),
+(18, '博鴻羽球館', 217, '東光路一段100號', 22.994, 120.231, 1, 1, 1),
+(19, '佳里羽球館', 234, '安北路196號', 23.17, 120.174, 1, 1, 1),
+(20, '金成羽球館', 220, '光州路36號', 22.9865, 120.161, 1, 1, 1),
+(21, '翔友羽球館', 221, '北安路二段538號', 23.0368, 120.203, 1, 1, 1),
+(22, '中愛羽球館', 217, '裕豐街214巷', 22.9883, 120.229, 1, 1, 1),
+(23, '藏龍羽球概念館', 229, '中山路50號', 22.9702, 120.267, 1, 1, 1),
+(24, '新力羽球南科館', 251, '陽光大道20號', 23.11, 120.309, 1, 1, 1),
+(25, '歸仁全民運動中心', 223, '長大路1號', 22.9049, 120.275, 1, 1, 1),
+(26, '羽潮羽球運動休閒館', 222, '中正南路592巷68號', 23.0364, 120.236, 1, 1, 1),
+(27, '南台科技大學', 222, '南台街1號', 23.0235, 120.226, 3, 0, 0);
 
 -- --------------------------------------------------------
 
@@ -866,7 +871,13 @@ INSERT INTO `court_sports` (`sport_id`, `court_id`) VALUES
 (3, 21),
 (3, 22),
 (3, 23),
-(3, 24);
+(3, 24),
+(1, 25),
+(2, 25),
+(3, 25),
+(3, 26),
+(1, 27),
+(2, 27);
 
 -- --------------------------------------------------------
 
@@ -2191,6 +2202,12 @@ ALTER TABLE `activity_list`
   ADD KEY `founder_id` (`founder_id`);
 
 --
+-- 資料表索引 `activity_message_board`
+--
+ALTER TABLE `activity_message_board`
+  ADD PRIMARY KEY (`id`);
+
+--
 -- 資料表索引 `admins`
 --
 ALTER TABLE `admins`
@@ -2396,6 +2413,12 @@ ALTER TABLE `activity_list`
   MODIFY `al_id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=62;
 
 --
+-- 使用資料表自動遞增(AUTO_INCREMENT) `activity_message_board`
+--
+ALTER TABLE `activity_message_board`
+  MODIFY `id` int NOT NULL AUTO_INCREMENT;
+
+--
 -- 使用資料表自動遞增(AUTO_INCREMENT) `admins`
 --
 ALTER TABLE `admins`
@@ -2423,13 +2446,13 @@ ALTER TABLE `contact_form_submissions`
 -- 使用資料表自動遞增(AUTO_INCREMENT) `court_info`
 --
 ALTER TABLE `court_info`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=28;
 
 --
 -- 使用資料表自動遞增(AUTO_INCREMENT) `favorites`
 --
 ALTER TABLE `favorites`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- 使用資料表自動遞增(AUTO_INCREMENT) `members`
