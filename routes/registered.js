@@ -297,4 +297,42 @@ router.get("/activity/:al_id", async (req, res) => {
   }
 });
 
+/**
+ * 檢查特定活動內是否有對應 member_id 的報名資料
+ * 範例：GET /registered/check?activity_id=3&member_id=2
+ */
+router.get("/check", async (req, res) => {
+  const { activity_id, member_id } = req.query;
+
+  if (!activity_id || !member_id) {
+    return res.status(400).json({ success: false, error: "缺少 activity_id 或 member_id" });
+  }
+
+  try {
+    const sql = `
+      SELECT id FROM registered
+      WHERE activity_id = ? AND member_id = ?
+      LIMIT 1
+    `;
+    const [rows] = await db.query(sql, [activity_id, member_id]);
+
+    if (rows.length > 0) {
+      return res.json({ success: true, isRegistered: true, registeredId: rows[0].id });
+    } else {
+      return res.json({ success: true, isRegistered: false });
+    }
+  } catch (err) {
+    console.error("❌ 檢查是否已報名時錯誤:", err);
+    return res.status(500).json({ success: false, error: "伺服器錯誤" });
+  }
+});
+
+router.get("/", async (req, res) => {
+  const { member_id } = req.query;
+  const sql = `SELECT activity_id FROM registered WHERE member_id = ?`;
+  const [rows] = await db.query(sql, [member_id]);
+  res.json({ success: true, rows });
+});
+
+
 export default router;
