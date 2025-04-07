@@ -20,6 +20,7 @@ import courtRouter from "./routes/court.js"
 import messageRouter from "./routes/messages.js";
 import cron from "node-cron";
 import sendReminderMessages from "./cron/activity-reminder.js";
+import couponRouter from "./routes/coupons.js"
 
 
 // cron 定時任務排程
@@ -91,6 +92,7 @@ app.use("/orders", ordersRouter);
 app.use("/court", courtRouter);
 app.use("/messages", messageRouter);
 app.use("/api/messages", messageRouter);
+app.use("/coupons", couponRouter);
 
 
 
