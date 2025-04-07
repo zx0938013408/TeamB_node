@@ -291,6 +291,39 @@ wss.on("connection", (ws) => {
           return;
         }
 
+        // ✅ 查詢運動場地（排球、籃球、羽球）
+        if (
+          userInput.includes("排球") ||
+          userInput.includes("籃球") ||
+          userInput.includes("羽球")
+        ) {
+          const keyword = userInput.includes("排球")
+            ? "排球"
+            : userInput.includes("籃球")
+            ? "籃球"
+            : "羽球";
+
+          const [courts] = await db.query(
+            `SELECT name, address FROM court_info WHERE name LIKE ?`,
+            [`%${keyword}%`]
+          );
+
+          const reply = courts.length
+            ? `<p>以下是與「${keyword}」相關的場地：</p><ul style="padding-left: 1.2rem; line-height: 1.6;">${courts
+                .map((c) => `<li>${c.name}（地址：${c.address}）</li>`)
+                .join("")}</ul>`
+            : `目前查無與「${keyword}」相關的場地喔～`;
+
+          ws.send(
+            JSON.stringify({
+              type: "chat",
+              sender: "ai",
+              message: reply,
+            })
+          );
+          return;
+        }
+
         // ✅ 預設用 GPT 回覆
         const completion = await openai.chat.completions.create({
           model: "gpt-3.5-turbo",
