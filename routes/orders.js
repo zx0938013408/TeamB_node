@@ -176,6 +176,7 @@ router.post("/api", async (req, res) => {
     detailed_address,
     store_name,
     store_address,
+    used_user_coupon_id ,  // 這裡接收優惠券 ID
   } = req.body;
 
   // 必填欄位檢查
@@ -212,10 +213,10 @@ router.post("/api", async (req, res) => {
 
     // 1️. 插入訂單
     const orderSql = `
-      INSERT INTO orders (MerchantTradeNo, members_id, total_amount, order_status_id, payment_status, shipping_method_id, payment_method_id, created_at)
-      VALUES (?, ?, ?, ?, '未付款', ?, ?, NOW());
+      INSERT INTO orders (MerchantTradeNo, members_id, total_amount, order_status_id, payment_status, shipping_method_id, payment_method_id, created_at,used_user_coupon_id )
+      VALUES (?, ?, ?, ?, '未付款', ?, ?, NOW(),?);
     `;
-    const [orderResult] = await connection.query(orderSql, [MerchantTradeNo, member_id, total_amount, order_status_id, shipping_method_id, payment_method_id]);
+    const [orderResult] = await connection.query(orderSql, [MerchantTradeNo, member_id, total_amount, order_status_id, shipping_method_id, payment_method_id,used_user_coupon_id ]);
 
     const orderId = orderResult.insertId; // 取得新增的訂單 ID
 
