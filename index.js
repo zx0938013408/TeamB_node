@@ -323,6 +323,53 @@ wss.on("connection", (ws) => {
           );
           return;
         }
+        // ✅ 查詢會員訂單
+        if (userInput.includes("訂單")) {
+          if (!memberId) {
+            ws.send(
+              JSON.stringify({
+                type: "chat",
+                sender: "ai",
+                message: "請先登入才能查詢您的訂單喔～",
+              })
+            );
+            return;
+          }
+
+          const [orders] = await db.query(
+            `
+            SELECT o.id, o.MerchantTradeNo, o.total_amount, s.order_name
+            FROM orders o
+            JOIN order_status s ON o.order_status_id = s.id
+            WHERE o.members_id = ?
+            ORDER BY o.id DESC
+            `,
+            [memberId]
+          );
+
+          const reply = orders.length
+  ? `<p>您最近的訂單如下：</p><ul style="padding-left: 1.2rem; line-height: 1.6;">${orders
+      .map(
+        (o) =>
+          `<li>
+            訂單編號：${o.id}<br />
+            代碼：${o.MerchantTradeNo}<br />
+            金額：NT$${o.total_amount}<br />
+            狀態：${o.order_name}
+          </li>`
+      )
+      .join("")}</ul>`
+  : "您目前沒有任何訂單紀錄喔～";
+
+          ws.send(
+            JSON.stringify({
+              type: "chat",
+              sender: "ai",
+              message: reply,
+            })
+          );
+          return;
+        }
 
         // ✅ 預設用 GPT 回覆
         const completion = await openai.chat.completions.create({
