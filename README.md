@@ -17,7 +17,7 @@ TeamB 運動揪團網站
 ### Database（資料庫）
 - MySQL
 ---------------------------------
-建立環境變數 dev.nev
+## 建立環境變數 dev.nev
 
 # Server Port
 WEB_PORT=3001
@@ -54,3 +54,8 @@ npm run dev
 ---------------------------------
 ##  前端網址
 https://github.com/zx0938013408/TeamB_next
+
+---------------------------------
+## 資料庫檔案
+# 放在TeamB_node 專案內部
+檔名: mfee59_teamb_database 0408.sql
