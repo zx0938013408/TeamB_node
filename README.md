@@ -24,9 +24,13 @@ WEB_PORT=3001
 
 # MySQL Database Configuration
 DB_HOST=your-database-host
+
 DB_USER=your-database-user
+
 DB_PASS=your-database-password
+
 DB_NAME=your-database-name
+
 DB_PORT=3306
 
 # JWT Secret Key
