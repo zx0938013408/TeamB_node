@@ -57,5 +57,5 @@ https://github.com/zx0938013408/TeamB_next
 
 ---------------------------------
 ## 資料庫檔案
-### 放在TeamB_node 專案內部
+### 放在 TeamB_node 專案內部
 檔名: mfee59_teamb_database 0408.sql
