@@ -1,3 +1,8 @@
+import dotenv from 'dotenv';
+
+// 根據環境載入對應的環境變數文件
+dotenv.config();
+
 import express from "express";
 import session from "express-session";
 import bcrypt from "bcrypt";
@@ -21,6 +26,16 @@ import messageRouter from "./routes/messages.js";
 import cron from "node-cron";
 import sendReminderMessages from "./cron/activity-reminder.js";
 import couponRouter from "./routes/coupons.js";
+
+// 確認環境變數已載入
+console.log('Environment:', process.env.NODE_ENV);
+console.log('Port:', process.env.WEB_PORT || 3002);
+console.log('Database Config:', {
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT,
+  database: process.env.DB_NAME,
+  user: process.env.DB_USER
+});
 
 // cron 定時任務排程
 // 每天凌晨 1 點執行一次
@@ -48,9 +63,21 @@ app.use(express.urlencoded({ extended: true }));
 const corsOptions = {
   credentials: true,
   origin: (origin, callback) => {
-    // console.log({ origin });
-    callback(null, true);
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'http://localhost:3003',
+      process.env.CORS_ORIGIN
+    ];
+    
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
   },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
 };
 app.use(cors(corsOptions));
 app.use(
@@ -201,16 +228,26 @@ import { WebSocketServer } from "ws";
 import fetch from "node-fetch"; // npm i node-fetch
 // import { app } from './app.js'; // 如果有 Express app
 import OpenAI from "openai";
-import dotenv from "dotenv";
 import { joinRoom } from "./utils/ws-push.js";
-
-dotenv.config();
 
 // AI 初始化
 const openai = new OpenAI({
-  apiKey: process.env.OPENROUTER_API_KEY,
-  baseURL: "https://openrouter.ai/api/v1",
+  apiKey: process.env.OPENAI_API_KEY || process.env.OPENROUTER_API_KEY,
+  baseURL: process.env.NODE_ENV === 'production' 
+    ? "https://openrouter.ai/api/v1"
+    : undefined
 });
+
+// 在啟動伺服器之前先測試環境變數
+if (!process.env.DB_HOST || !process.env.DB_USER || !process.env.DB_PASS) {
+  console.error('錯誤: 缺少必要的資料庫環境變數');
+  process.exit(1);
+}
+
+if (!process.env.OPENAI_API_KEY && !process.env.OPENROUTER_API_KEY) {
+  console.error('錯誤: 缺少 OpenAI API 金鑰');
+  process.exit(1);
+}
 
 // 🔔 儲存 WebSocket 用戶連線 (memberId -> WebSocket)
 export const wsClients = new Map();
@@ -410,4 +447,7 @@ wss.on("connection", (ws) => {
 const port = process.env.WEB_PORT || 3002;
 server.listen(port, () => {
   console.log(`🚀 伺服器與 WebSocket 啟動中，port: ${port}`);
+  console.log(`環境: ${process.env.NODE_ENV}`);
+  console.log(`數據庫: ${process.env.DB_HOST}`);
+  console.log(`CORS 來源: ${process.env.CORS_ORIGIN}`);
 });
