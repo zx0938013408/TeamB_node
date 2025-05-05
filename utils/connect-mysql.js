@@ -1,44 +1,18 @@
-import mysql from 'mysql2/promise';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import mysql from "mysql2/promise";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const { DB_HOST, DB_USER, DB_PASS, DB_NAME, DB_PORT } = process.env;
 
-const pool = mysql.createPool({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASS,
-  database: process.env.DB_NAME,
-  port: process.env.DB_PORT,
+console.log({ DB_HOST, DB_USER, DB_PASS, DB_NAME, DB_PORT });
+
+const db = mysql.createPool({
+  host: DB_HOST,
+  user: DB_USER,
+  password: DB_PASS,
+  database: DB_NAME,
+
   waitForConnections: true,
-  connectionLimit: 10,
+  connectionLimit: 5,
   queueLimit: 0,
-  ssl: {
-    minVersion: 'TLSv1.2',
-    rejectUnauthorized: true,
-    ca: fs.readFileSync(path.join(__dirname, '../ssl/tidb.crt')).toString()
-  },
-  enableKeepAlive: true,
-  keepAliveInitialDelay: 10000,
-  timezone: '+08:00',
-  dateStrings: true,
-  multipleStatements: true
 });
 
-// 測試連接
-const testConnection = async () => {
-  try {
-    const conn = await pool.getConnection();
-    console.log('✅ 資料庫連接成功');
-    conn.release();
-  } catch (err) {
-    console.error('❌ 資料庫連接失敗:', err);
-    process.exit(1);
-  }
-};
-
-testConnection();
-
-export default pool;
+export default db;
