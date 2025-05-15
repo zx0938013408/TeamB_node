@@ -584,8 +584,8 @@ router.post("/login-jwt", async (req, res) => {
   members.name,
   members.gender,
   members.birthday_date,
-  members.city_id,              -- ✅ 加這行
-  members.area_id,              -- ✅ 加這行
+  members.city_id,              
+  members.area_id,              
   citys.city_name AS city,
   MAX(areas.name) AS area,
   members.address,
@@ -601,7 +601,19 @@ LEFT JOIN areas ON areas.city_id = citys.city_id
 LEFT JOIN member_sports ON members.id = member_sports.member_id
 LEFT JOIN sport_type ON member_sports.sport_id = sport_type.id
 WHERE members.email = ?
-GROUP BY members.id;`;
+GROUP BY 
+  members.id,
+  members.name,
+  members.gender,
+  members.birthday_date,
+  members.city_id,
+  members.area_id,
+  citys.city_name,
+  members.address,
+  members.phone,
+  members.email,
+  members.password_hashed,
+  members.avatar;`;
 
   const [rows] = await db.query(sql, [email]);
 
