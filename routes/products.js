@@ -318,7 +318,18 @@ if (req.query.sort) {
   // 取得資料庫需要的表裡的資料
   const sql = `
   SELECT 
-  pd.*, 
+  pd.id,
+  pd.image,
+  pd.product_code,
+  pd.product_name,
+  pd.category_id,
+  pd.sport_type_id,
+  pd.product_description,
+  pd.price,
+  pd.size,
+  pd.color,
+  pd.inventory,
+  pd.created_at,
   sub_c.categories_name AS sub_category_name,
   parent_c.id AS parent_category_id,
   parent_c.categories_name AS parent_category_name,
@@ -337,7 +348,7 @@ LEFT JOIN (
 ) l ON pd.id = l.pd_id
 LEFT JOIN pd_variants v ON pd.id = v.product_id
 ${where}
-GROUP BY pd.id
+GROUP BY pd.id, pd.image, pd.product_code, pd.product_name, pd.category_id, pd.sport_type_id, pd.product_description, pd.price, pd.size, pd.color, pd.inventory, pd.created_at, sub_c.categories_name, parent_c.id, parent_c.categories_name
 ${orderBy}
 LIMIT ?, ?`;
 
