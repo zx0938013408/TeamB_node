@@ -48,7 +48,10 @@ router.get("/:memberId/activities", async (req, res) => {
   JOIN members reg_member ON r.member_id = reg_member.id
   LEFT JOIN favorites f ON f.activity_id = al.al_id AND f.member_id = ?
   WHERE r.member_id = ?
-  GROUP BY registered_id, al.al_id, al.activity_name, st.sport_name, ci.name;`,
+  GROUP BY 
+    r.id, r.member_id, reg_member.name, r.num, r.notes, r.registered_time,
+    al.al_id, al.activity_name, al.activity_time, al.introduction, al.avatar,
+    al.deadline, al.payment, al.need_num, m.name, st.sport_name, ci.name, f.id`,
       [memberId, memberId]
     );
     // 格式化時間為 YYYY-MM-DD HH:mm
@@ -107,7 +110,10 @@ router.get("/:memberId/created-activities", async (req, res) => {
       LEFT JOIN registered r ON al.al_id = r.activity_id
       LEFT JOIN favorites f ON f.activity_id = al.al_id AND f.member_id = ?
       WHERE al.founder_id = ?
-      GROUP BY al.al_id, al.activity_name, st.sport_name, ci.name
+      GROUP BY 
+        al.al_id, al.activity_name, al.activity_time, al.introduction, al.avatar,
+        al.deadline, al.payment, al.need_num, al.area_id, al.court_id, al.sport_type_id,
+        al.avatar2, al.avatar3, al.avatar4, st.sport_name, ci.name, f.id
     `;
 
     const [rows] = await db.query(r_sql, [memberId, memberId]);
@@ -169,7 +175,9 @@ router.get("/:memberId/favorites", async (req, res) => {
       JOIN members m ON al.founder_id = m.id
       LEFT JOIN registered r ON al.al_id = r.activity_id
       WHERE f.member_id = ?
-      GROUP BY al.al_id, al.activity_name, st.sport_name, ci.name
+      GROUP BY 
+        al.al_id, al.activity_name, al.activity_time, al.introduction, al.avatar,
+        al.deadline, al.payment, al.need_num, m.name, st.sport_name, ci.name, f.id
     `;
 
     const [rows] = await db.query(r_sql, [memberId]);
@@ -359,8 +367,5 @@ router.delete("/:alId", async (req, res) => {
 
   res.json(output);
 });
-
-
-
 
 export default router;
