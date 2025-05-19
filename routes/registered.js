@@ -165,7 +165,7 @@ router.delete("/:registeredId", async (req, res) => {
     const content = `會員 ${record.name} 已取消報名活動「${record.activity_name}」。\n取消原因：${cancel_reason}`;
 
     await db.query(
-      `INSERT INTO messages (member_id, title, content) VALUES (?, ?, ?)`,
+      `INSERT INTO messages (id, member_id, title, content) VALUES (NULL, ?, ?, ?)`,
       [record.founder_id, "參加者取消報名通知", content]
     );
     notifyUser(record.founder_id, {

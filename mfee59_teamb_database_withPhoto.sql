@@ -1925,18 +1925,18 @@ INSERT INTO `product_themes` (`product_id`, `theme_id`) VALUES
 --
 
 CREATE TABLE `registered` (
-  `id` int NOT NULL,
+  `id` int NOT NULL AUTO_INCREMENT,
   `member_id` int NOT NULL,
   `activity_id` int NOT NULL,
   `num` decimal(10,0) NOT NULL,
   `notes` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `registered_time` datetime DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+  `registered_time` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci AUTO_INCREMENT=1;
 
 --
 -- 傾印資料表的資料 `registered`
 --
-
 
 INSERT INTO `registered` (`id`, `member_id`, `activity_id`, `num`, `notes`, `registered_time`) VALUES
 (1, 47, 58, 3, '1男2女', '2025-01-12 14:43:03'),
