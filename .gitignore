@@ -5,6 +5,7 @@
 .idea
 .vscode
 dev.env
+production.env
 headers.txt
 package-lock.json
 
