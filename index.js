@@ -21,6 +21,7 @@ import messageRouter from "./routes/messages.js";
 import cron from "node-cron";
 import sendReminderMessages from "./cron/activity-reminder.js";
 import couponRouter from "./routes/coupons.js";
+import shipmentRouter from './routes/shipment.js'
 
 // cron 定時任務排程
 // 每天凌晨 1 點執行一次
@@ -90,6 +91,7 @@ app.use("/court", courtRouter);
 app.use("/messages", messageRouter);
 app.use("/api/messages", messageRouter);
 app.use("/coupons", couponRouter);
+app.use('/ship', shipmentRouter)
 
 app.get("/", (req, res) => {
   res.locals.title = "首頁 - " + res.locals.title;
